@@ -7,7 +7,7 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite",
-    "start": "node server.js",
+    "start": "npx serve dist -s -l $PORT",
     "demo": "tsx src/cli.ts",
     "test": "vitest run",
     "web:dev": "vite",
@@ -15,7 +15,8 @@
     "web:preview": "vite preview"
   },
   "dependencies": {
-    "vite": "^5.3.5"
+    "vite": "^5.3.5",
+    "serve": "^14.2.0"
   },
   "devDependencies": {
     "tsx": "^4.16.2",
