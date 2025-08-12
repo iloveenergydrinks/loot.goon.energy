@@ -5,20 +5,22 @@
   "type": "module",
   "description": "Per-item node-based looting/salvage simulation core with queue, hazard, and detection.",
   "scripts": {
-    "build": "tsc -p .",
-    "dev": "tsx watch src/cli.ts",
+    "build": "vite build",
+    "dev": "vite",
+    "start": "node server.js",
     "demo": "tsx src/cli.ts",
-    "start": "node dist/cli.js",
     "test": "vitest run",
     "web:dev": "vite",
     "web:build": "vite build",
     "web:preview": "vite preview"
   },
+  "dependencies": {
+    "vite": "^5.3.5"
+  },
   "devDependencies": {
     "tsx": "^4.16.2",
     "typescript": "^5.5.4",
-    "vitest": "^2.0.5",
-    "vite": "^5.3.5"
+    "vitest": "^2.0.5"
   }
 }
 
