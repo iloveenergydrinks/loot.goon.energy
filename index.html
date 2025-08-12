@@ -1,0 +1,675 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Salvage Operations</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    @font-face {
+      font-family: 'Industrial';
+      src: local('Consolas'), local('Courier New'), local('monospace');
+    }
+    
+    :root {
+      --bg-main: #000000;
+      --bg-panel: #0a0a0a;
+      --bg-cell: #111111;
+      --border: #222222;
+      --border-thick: #444444;
+      --text: #ffffff;
+      --text-dim: #666666;
+      --accent: #ff6600;
+      --danger: #ff3300;
+      --success: #ffffff;
+      --warning: #ff9900;
+      --volatile: #ff6600;
+      --fragile: #ffffff;
+      --heavy: #666666;
+      --data: #999999;
+      --structural: #333333;
+      --valuable: #ff9900;
+    }
+
+    body {
+      font-family: 'Industrial', 'Consolas', monospace;
+      background: var(--bg-main);
+      color: var(--text);
+      height: 100vh;
+      overflow: hidden;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+
+    #app {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Map View */
+    #mapView {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      background: 
+        repeating-linear-gradient(
+          0deg,
+          transparent,
+          transparent 20px,
+          rgba(255,255,255,0.01) 20px,
+          rgba(255,255,255,0.01) 22px
+        ),
+        repeating-linear-gradient(
+          90deg,
+          transparent,
+          transparent 20px,
+          rgba(255,255,255,0.01) 20px,
+          rgba(255,255,255,0.01) 22px
+        ),
+        linear-gradient(135deg, #0a0a0a 0%, #0f0f0f 100%);
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .hud {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      background: rgba(0, 0, 0, 0.95);
+      border: 2px solid var(--accent);
+      padding: 15px;
+      min-width: 250px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      z-index: 1000;
+    }
+
+    .hud-row {
+      display: flex;
+      justify-content: space-between;
+      margin: 5px 0;
+    }
+
+    .hud-label {
+      color: var(--text-dim);
+    }
+
+    .hud-value {
+      color: var(--accent);
+      font-weight: bold;
+    }
+
+    .prompt {
+      position: absolute;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(15, 15, 15, 0.95);
+      border: 2px solid var(--accent);
+      padding: 15px 30px;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+
+    /* Loot Modal */
+    #lootModal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.95);
+      display: none;
+      z-index: 100;
+    }
+
+    #lootModal.show {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .modal-header {
+      height: 60px;
+      background: var(--bg-panel);
+      border-bottom: 3px solid var(--border-thick);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+    }
+
+    .modal-title {
+      font-size: 24px;
+      font-weight: bold;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--accent);
+      text-shadow: 0 0 10px rgba(255,107,0,0.5);
+    }
+
+    .modal-controls {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+    }
+
+    .stance-selector {
+      display: flex;
+      border: 2px solid var(--border-thick);
+      background: var(--bg-main);
+    }
+
+    .stance-btn {
+      padding: 8px 16px;
+      background: transparent;
+      border: none;
+      color: var(--text-dim);
+      cursor: pointer;
+      text-transform: uppercase;
+      font-family: inherit;
+      font-weight: bold;
+      letter-spacing: 1px;
+      transition: all 0.2s;
+    }
+
+    .stance-btn:not(:last-child) {
+      border-right: 2px solid var(--border-thick);
+    }
+
+    .stance-btn.active {
+      background: var(--accent);
+      color: var(--bg-main);
+      text-shadow: 0 0 5px rgba(255,107,0,0.5);
+    }
+
+    .close-btn {
+      padding: 8px 16px;
+      background: var(--danger);
+      border: 2px solid var(--danger);
+      color: white;
+      cursor: pointer;
+      text-transform: uppercase;
+      font-family: inherit;
+      font-weight: bold;
+      letter-spacing: 1px;
+      transition: all 0.2s;
+    }
+
+    .close-btn:hover {
+      background: #ff0040;
+      box-shadow: 0 0 20px rgba(255, 0, 64, 0.5);
+    }
+
+    .modal-content {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    .grid-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+      position: relative;
+    }
+
+    .grid-wrapper {
+      background: var(--bg-panel);
+      border: 3px solid var(--border-thick);
+      padding: 20px;
+      box-shadow: 
+        0 0 40px rgba(0,0,0,0.8),
+        inset 0 0 20px rgba(0,0,0,0.5);
+    }
+
+    .loot-grid {
+      display: grid;
+      gap: 4px;
+      background: var(--bg-main);
+      padding: 4px;
+    }
+
+    .grid-cell {
+      width: 120px;
+      height: 120px;
+      background: var(--bg-cell);
+      border: 2px solid var(--border);
+      position: relative;
+      cursor: pointer;
+      transition: all 0.2s;
+      overflow: hidden;
+    }
+
+    .grid-cell.empty {
+      background: var(--bg-main);
+      border-color: #222;
+      cursor: default;
+    }
+
+    .grid-cell.available {
+      cursor: pointer !important;
+    }
+    
+    .grid-cell.available:hover {
+      border-color: var(--accent) !important;
+      transform: scale(1.05);
+      z-index: 10;
+      box-shadow: 0 0 20px rgba(255,107,0,0.4);
+      background: rgba(255, 107, 0, 0.1) !important;
+    }
+
+    .grid-cell.extracting {
+      border-color: var(--accent);
+    }
+
+    .grid-cell.damaged {
+      background: repeating-linear-gradient(
+        45deg,
+        var(--bg-cell),
+        var(--bg-cell) 10px,
+        rgba(255,0,0,0.1) 10px,
+        rgba(255,0,0,0.1) 20px
+      );
+    }
+
+    .grid-cell.destroyed {
+      background: var(--bg-main);
+      border-color: var(--danger);
+      opacity: 0.3;
+    }
+
+    .grid-cell.looted {
+      background: var(--bg-main);
+      border-color: var(--success);
+      opacity: 0.5;
+    }
+
+    .grid-cell.shaking {
+      animation: shake 0.2s infinite;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-2px) rotate(-1deg); }
+      75% { transform: translateX(2px) rotate(1deg); }
+    }
+
+    .module-icon {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      font-size: 24px;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+      pointer-events: none;
+    }
+
+    .module-type {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      padding: 2px 6px;
+      background: rgba(0,0,0,0.8);
+      border: 1px solid var(--border);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      pointer-events: none;
+    }
+
+    .module-type.volatile { color: var(--volatile); border-color: var(--volatile); }
+    .module-type.fragile { color: var(--fragile); border-color: var(--fragile); }
+    .module-type.heavy { color: var(--heavy); border-color: var(--heavy); }
+    .module-type.data { color: var(--data); border-color: var(--data); }
+    .module-type.structural { color: var(--structural); border-color: var(--structural); }
+    .module-type.valuable { color: var(--valuable); border-color: var(--valuable); }
+
+    .module-name {
+      position: absolute;
+      bottom: 30px;
+      left: 10px;
+      right: 10px;
+      font-size: 11px;
+      color: var(--text-dim);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      pointer-events: none;
+    }
+
+    .module-value {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      font-size: 14px;
+      font-weight: bold;
+      color: var(--warning);
+      text-shadow: 0 0 5px rgba(255,170,0,0.5);
+      pointer-events: none;
+    }
+
+    .module-condition {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      font-size: 12px;
+      color: var(--text-dim);
+      pointer-events: none;
+    }
+
+    .progress-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: rgba(0,0,0,0.5);
+      pointer-events: none;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--accent);
+      transition: width 0.1s;
+      pointer-events: none;
+    }
+
+    .instability-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: rgba(0,0,0,0.5);
+      pointer-events: none;
+    }
+
+    .instability-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--warning), var(--danger));
+      transition: width 0.1s;
+      box-shadow: 0 0 10px rgba(255,0,64,0.5);
+      pointer-events: none;
+    }
+    
+    /* Ensure all child elements don't block clicks */
+    .grid-cell * {
+      pointer-events: none !important;
+    }
+    
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-2px) rotate(-1deg); }
+      75% { transform: translateX(2px) rotate(1deg); }
+    }
+
+    @keyframes failureFlash {
+      0% { background: var(--danger); transform: scale(1); }
+      50% { background: #ff0000; transform: scale(1.1); }
+      100% { background: var(--bg-dark); transform: scale(1); opacity: 0.3; }
+    }
+
+    .extraction-failed {
+      animation: failureFlash 0.5s ease-out;
+      border-color: var(--danger) !important;
+      opacity: 0.3 !important;
+    }
+    
+
+
+    .sidebar {
+      width: 300px;
+      background: var(--bg-panel);
+      border-left: 3px solid var(--border-thick);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      overflow-y: auto;
+    }
+
+    .panel {
+      background: var(--bg-main);
+      border: 2px solid var(--border);
+      padding: 15px;
+    }
+
+    .panel-title {
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--accent);
+      margin-bottom: 10px;
+      padding-bottom: 5px;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .panel-title.danger-title {
+      color: var(--danger);
+      font-weight: bold;
+      animation: pulse-danger 1s infinite;
+    }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      margin: 8px 0;
+      font-size: 13px;
+    }
+
+    .stat-label {
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .stat-value {
+      color: var(--text);
+      font-weight: bold;
+    }
+
+    .meter {
+      height: 24px;
+      background: var(--bg-main);
+      border: 2px solid var(--border);
+      margin: 10px 0;
+      position: relative;
+      overflow: hidden;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+    }
+    
+    .meter.stability-meter {
+      border-color: var(--accent);
+      background: #111;
+    }
+
+    .meter-fill {
+      height: 100%;
+      transition: width 0.3s;
+    }
+
+    .meter-fill.stability {
+      background: var(--success);
+      transition: background-color 0.3s, width 0.3s;
+    }
+    
+    .meter-fill.stability.warning {
+      background: var(--warning);
+    }
+    
+    .meter-fill.stability.danger {
+      background: var(--danger);
+    }
+    
+    .meter-fill.stability.critical {
+      background: #ff0000;
+      animation: pulse-danger 1s infinite;
+    }
+    
+    @keyframes pulse-danger {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    .meter-fill.detection {
+      background: linear-gradient(90deg, var(--success), var(--warning), var(--danger));
+    }
+
+    .meter-label {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text);
+      text-shadow: 0 0 3px rgba(0,0,0,0.8);
+      white-space: nowrap;
+      width: 100%;
+      text-align: center;
+    }
+    
+    .meter-label span {
+      margin-left: 5px;
+    }
+
+    .explosion-effect {
+      position: absolute;
+      border: 3px solid var(--danger);
+      border-radius: 50%;
+      pointer-events: none;
+      animation: explode 0.5s ease-out forwards;
+    }
+
+    @keyframes explode {
+      0% {
+        width: 0;
+        height: 0;
+        opacity: 1;
+      }
+      100% {
+        width: 300px;
+        height: 300px;
+        opacity: 0;
+      }
+    }
+
+    .damage-number {
+      position: absolute;
+      color: var(--danger);
+      font-size: 20px;
+      font-weight: bold;
+      pointer-events: none;
+      animation: float-up 1s ease-out forwards;
+      text-shadow: 0 0 5px rgba(255,0,64,0.8);
+    }
+
+    @keyframes float-up {
+      0% {
+        transform: translateY(0);
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(-50px);
+        opacity: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- Map View -->
+    <div id="mapView">
+      <canvas id="mapCanvas"></canvas>
+      <div class="hud">
+        <div class="hud-row">
+          <span class="hud-label">Position</span>
+          <span class="hud-value" id="hudPos">0, 0</span>
+        </div>
+        <div class="hud-row">
+          <span class="hud-label">Credits</span>
+          <span class="hud-value" id="hudCredits">0</span>
+        </div>
+        <div class="hud-row">
+          <span class="hud-label">Cargo</span>
+          <span class="hud-value" id="hudCargo">0/100</span>
+        </div>
+        <div class="hud-row">
+          <span class="hud-label">Sites</span>
+          <span class="hud-value" id="hudSites">0</span>
+        </div>
+      </div>
+      <div class="prompt" id="prompt" style="display: none;">
+        Press [E] to enter site
+      </div>
+    </div>
+
+    <!-- Loot Modal -->
+    <div id="lootModal">
+      <div class="modal-header">
+        <div class="modal-title" id="modalTitle">SALVAGE OPERATION</div>
+        <div class="modal-controls">
+          <button class="close-btn" id="closeModal">EXIT SITE</button>
+        </div>
+      </div>
+      
+      <div class="modal-content">
+        <div class="grid-container">
+          <div class="grid-wrapper">
+            <div id="lootGrid" class="loot-grid"></div>
+          </div>
+        </div>
+        
+        <div class="sidebar">
+          <div class="panel">
+            <div class="panel-title">EXTRACTION STATUS</div>
+            <div class="stat-row">
+              <span class="stat-label">Value</span>
+              <span class="stat-value" id="totalValue">0</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">Cargo</span>
+              <span class="stat-value" id="cargoStatus">0/100</span>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-title">SITE INTEGRITY</div>
+            <div class="meter stability-meter">
+              <div class="meter-fill stability" id="stabilityBar" style="width: 100%"></div>
+              <div class="meter-label">SITE INTEGRITY <span id="stabilityValue">100%</span></div>
+            </div>
+            <div class="meter">
+              <div class="meter-fill detection" id="detectionBar" style="width: 0%"></div>
+              <div class="meter-label">DETECTION <span id="detectionValue">0%</span></div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-title">CONTROLS</div>
+            <div style="font-size: 12px; line-height: 1.8; color: var(--text-dim);">
+              <div>LEFT CLICK - Extract module</div>
+              <div>RIGHT CLICK - Cancel extraction</div>
+              <div>ESC - Exit site</div>
+              <div style="margin-top: 10px; color: var(--warning);">
+                WARNING: Volatile modules can explode!
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/web/integrated-game.ts"></script>
+</body>
+</html>
