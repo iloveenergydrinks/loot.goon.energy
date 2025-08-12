@@ -1,17 +1,19 @@
-import { LootingGrid, Module } from './grid-game.js';
+import { LootingGrid, Module, GridSite } from './grid-game.js';
+
+// Create the game instance
+const game = new LootingGrid(
+  () => updateUI(),
+  (exploded, affected) => onExplosion(exploded, affected)
+);
 
 // DOM elements
-const lootGrid = document.getElementById('lootGrid')!;
-const totalValue = document.getElementById('totalValue')!;
-const cargoStatus = document.getElementById('cargoStatus')!;
+const gridElement = document.getElementById('lootGrid') as HTMLDivElement;
+const totalValueElement = document.getElementById('totalValue') as HTMLElement;
+const cargoStatusElement = document.getElementById('cargoStatus') as HTMLElement;
 const stabilityBar = document.getElementById('stabilityBar') as HTMLDivElement;
-const stabilityValue = document.getElementById('stabilityValue')!;
+const stabilityValue = document.getElementById('stabilityValue') as HTMLElement;
 const detectionBar = document.getElementById('detectionBar') as HTMLDivElement;
-const detectionValue = document.getElementById('detectionValue')!;
-const stanceButtons = document.querySelectorAll('.stance-btn');
-
-// Game instance
-const game = new LootingGrid(updateUI, onExplosion);
+const detectionValue = document.getElementById('detectionValue') as HTMLElement;
 
 // Module icons
 const moduleIcons: Record<string, string> = {
@@ -24,36 +26,47 @@ const moduleIcons: Record<string, string> = {
   empty: '',
 };
 
-function updateUI() {
-  const state = game.getState();
-  const site = state.currentSite;
+// Initialize
+function init() {
+  // Generate initial site
+  const site = game.generateSite(6, 5);
+  game.loadSite(site);
   
-  if (!site) return;
+  // Setup stance buttons
+  document.querySelectorAll('.stance-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const target = e.target as HTMLButtonElement;
+      const stance = target.dataset.stance as 'quick' | 'normal' | 'careful';
+      
+      // Update active state
+      document.querySelectorAll('.stance-btn').forEach(b => b.classList.remove('active'));
+      target.classList.add('active');
+      
+      // Set stance
+      game.setStance(stance);
+    });
+  });
   
-  // Update stats
-  totalValue.textContent = state.totalValue.toString();
-  cargoStatus.textContent = `${state.cargoUsed}/${state.cargoMax}`;
+  // Start game loop
+  setInterval(() => {
+    game.tick();
+  }, 100);
   
-  // Update meters
-  stabilityBar.style.width = `${site.siteStability}%`;
-  stabilityValue.textContent = `${Math.round(site.siteStability)}%`;
-  
-  detectionBar.style.width = `${site.detectionLevel}%`;
-  detectionValue.textContent = `${Math.round(site.detectionLevel)}%`;
-  
-  // Color code stability bar
-  if (site.siteStability < 30) {
-    stabilityBar.style.background = 'linear-gradient(90deg, #ff0040, #ff3366)';
-  } else if (site.siteStability < 60) {
-    stabilityBar.style.background = 'linear-gradient(90deg, #ff6600, #ffaa00)';
-  } else {
-    stabilityBar.style.background = 'linear-gradient(90deg, #00aa66, #00ff88)';
-  }
-  
-  // Render grid
+  // Initial render
   renderGrid();
+  updateUI();
 }
 
+// Get value tier for styling
+function getValueTier(value: number): number {
+  if (value >= 2500) return 5;  // Ultra valuable
+  if (value >= 2000) return 4;  // Very valuable
+  if (value >= 1500) return 3;  // Valuable
+  if (value >= 1000) return 2;  // Moderate
+  return 1;  // Low value
+}
+
+// Render the grid
 function renderGrid() {
   const state = game.getState();
   const site = state.currentSite;
@@ -61,8 +74,8 @@ function renderGrid() {
   if (!site) return;
   
   // Set grid dimensions
-  lootGrid.style.gridTemplateColumns = `repeat(${site.width}, 1fr)`;
-  lootGrid.innerHTML = '';
+  gridElement.style.gridTemplateColumns = `repeat(${site.width}, 1fr)`;
+  gridElement.innerHTML = '';
   
   // Sort modules by position
   const sortedModules = [...site.modules].sort((a, b) => {
@@ -70,16 +83,77 @@ function renderGrid() {
     return a.gridX - b.gridX;
   });
   
+  // Find top 3 most valuable available modules for crown indicators
+  const availableModules = site.modules
+    .filter(m => m.state === 'available' && m.value > 0)
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 3);
+  
+  // Create cells
   for (const module of sortedModules) {
     const cell = createCell(module);
-    lootGrid.appendChild(cell);
+    
+    // Add crown indicator for top 3 most valuable modules
+    const topValueRank = availableModules.indexOf(module);
+    if (topValueRank !== -1) {
+      const crown = document.createElement('div');
+      crown.className = 'value-crown';
+      
+      if (topValueRank === 0) {
+        crown.textContent = '👑';
+        crown.classList.add('crown-gold');
+      } else if (topValueRank === 1) {
+        crown.textContent = '🥈';
+        crown.classList.add('crown-silver');
+      } else if (topValueRank === 2) {
+        crown.textContent = '🥉';
+        crown.classList.add('crown-bronze');
+      }
+      
+      cell.appendChild(crown);
+    }
+    
+    gridElement.appendChild(cell);
+    
+    // Add click handlers
+    if (module.state === 'available') {
+      cell.addEventListener('click', () => {
+        game.startExtraction(module.id);
+      });
+    } else if (module.state === 'extracting') {
+      cell.addEventListener('click', () => {
+        game.cancelExtraction(module.id);
+      });
+      cell.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        game.cancelExtraction(module.id);
+      });
+    }
   }
 }
 
+// Create a cell element
 function createCell(module: Module): HTMLDivElement {
   const cell = document.createElement('div');
   cell.className = `grid-cell ${module.state}`;
   cell.dataset.moduleId = module.id;
+  
+  // Calculate value tier for styling (only for available modules)
+  if (module.state === 'available' && module.value > 0) {
+    const valueTier = getValueTier(module.value);
+    cell.classList.add(`value-tier-${valueTier}`);
+  }
+  
+  // Apply value-based border colors for available modules
+  if (module.state === 'available') {
+    if (module.value >= 2500) {
+      cell.style.borderColor = '#ffaa00';
+    } else if (module.value >= 2000) {
+      cell.style.borderColor = '#ff9900';
+    } else if (module.value >= 1500) {
+      cell.style.borderColor = '#aa6600';
+    }
+  }
   
   if (module.isShaking) {
     cell.classList.add('shaking');
@@ -113,6 +187,14 @@ function createCell(module: Module): HTMLDivElement {
   value.textContent = `$${module.value}`;
   cell.appendChild(value);
   
+  // Add value badge for high-value items
+  if (module.value >= 2000 && module.state === 'available') {
+    const valueBadge = document.createElement('div');
+    valueBadge.className = 'value-badge';
+    valueBadge.textContent = 'HIGH';
+    cell.appendChild(valueBadge);
+  }
+  
   // Condition
   const condition = document.createElement('div');
   condition.className = 'module-condition';
@@ -141,21 +223,32 @@ function createCell(module: Module): HTMLDivElement {
     cell.appendChild(instabilityBar);
   }
   
-  // Click handlers
-  if (module.state === 'available') {
-    cell.addEventListener('click', () => {
-      game.startExtraction(module.id);
-    });
-  } else if (module.state === 'extracting') {
-    cell.addEventListener('contextmenu', (e) => {
-      e.preventDefault();
-      game.cancelExtraction(module.id);
-    });
-  }
-  
   return cell;
 }
 
+// Update UI elements
+function updateUI() {
+  const state = game.getState();
+  const site = state.currentSite;
+  
+  if (!site) return;
+  
+  // Update stats
+  totalValueElement.textContent = state.totalValue.toString();
+  cargoStatusElement.textContent = `${state.cargoUsed}/${state.cargoMax}`;
+  
+  // Update meters
+  stabilityBar.style.width = `${site.siteStability}%`;
+  stabilityValue.textContent = `${Math.round(site.siteStability)}%`;
+  
+  detectionBar.style.width = `${site.detectionLevel}%`;
+  detectionValue.textContent = `${Math.round(site.detectionLevel)}%`;
+  
+  // Re-render grid to update cell states
+  renderGrid();
+}
+
+// Handle explosion effects
 function onExplosion(exploded: Module, affected: Module[]) {
   // Find the exploded cell
   const explodedCell = document.querySelector(`[data-module-id="${exploded.id}"]`);
@@ -188,53 +281,7 @@ function onExplosion(exploded: Module, affected: Module[]) {
     // Remove after animation
     setTimeout(() => damage.remove(), 1000);
   }
-  
-  // Screen shake effect
-  document.body.style.animation = 'shake 0.3s';
-  setTimeout(() => {
-    document.body.style.animation = '';
-  }, 300);
 }
 
-// Stance selection
-stanceButtons.forEach(btn => {
-  btn.addEventListener('click', () => {
-    stanceButtons.forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    const stance = btn.getAttribute('data-stance') as 'quick' | 'normal' | 'careful';
-    game.setStance(stance);
-  });
-});
-
-// Initialize game
-function init() {
-  const site = game.generateSite(6, 4);
-  game.loadSite(site);
-  updateUI();
-  
-  // Game tick
-  setInterval(() => {
-    game.tick();
-  }, 100);
-}
-
-// Add screen shake animation
-const style = document.createElement('style');
-style.textContent = `
-  @keyframes shake {
-    0%, 100% { transform: translateX(0); }
-    10% { transform: translateX(-10px) translateY(-5px); }
-    20% { transform: translateX(10px) translateY(5px); }
-    30% { transform: translateX(-8px) translateY(-3px); }
-    40% { transform: translateX(8px) translateY(3px); }
-    50% { transform: translateX(-6px) translateY(-2px); }
-    60% { transform: translateX(6px) translateY(2px); }
-    70% { transform: translateX(-4px) translateY(-1px); }
-    80% { transform: translateX(4px) translateY(1px); }
-    90% { transform: translateX(-2px); }
-  }
-`;
-document.head.appendChild(style);
-
-// Start game
+// Start the game
 init();

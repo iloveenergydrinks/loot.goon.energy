@@ -579,8 +579,35 @@ class IntegratedGame {
       return a.gridX - b.gridX;
     });
     
+    // Find top 3 most valuable available modules for crown indicators
+    const availableModules = site.modules
+      .filter(m => m.state === 'available' && m.value > 0)
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 3);
+    
     for (const module of sortedModules) {
       const cell = this.createCell(module);
+      
+      // Add crown indicator for top 3 most valuable modules
+      const topValueRank = availableModules.indexOf(module);
+      if (topValueRank !== -1) {
+        const crown = document.createElement('div');
+        crown.className = 'value-crown';
+        
+        if (topValueRank === 0) {
+          crown.textContent = '👑';
+          crown.classList.add('crown-gold');
+        } else if (topValueRank === 1) {
+          crown.textContent = '🥈';
+          crown.classList.add('crown-silver');
+        } else if (topValueRank === 2) {
+          crown.textContent = '🥉';
+          crown.classList.add('crown-bronze');
+        }
+        
+        cell.appendChild(crown);
+      }
+      
       this.lootGrid.appendChild(cell);
       
       // Add click handler directly to each cell (like the working grid version)
@@ -608,10 +635,24 @@ class IntegratedGame {
     cell.className = `grid-cell ${module.state}`;
     cell.dataset.moduleId = module.id;
     
+    // Calculate value tier for styling (only for available modules)
+    if (module.state === 'available' && module.value > 0) {
+      const valueTier = this.getValueTier(module.value);
+      cell.classList.add(`value-tier-${valueTier}`);
+    }
+    
     // Industrial minimal styling
     if (module.state === 'available') {
-      cell.style.border = '2px solid #ffffff';
-      cell.style.background = '#111111';
+      // Value-based border colors override default
+      if (module.value >= 2500) {
+        cell.style.border = '2px solid #ffaa00';
+      } else if (module.value >= 2000) {
+        cell.style.border = '2px solid #ff9900';
+      } else if (module.value >= 1500) {
+        cell.style.border = '2px solid #aa6600';
+      } else {
+        cell.style.border = '2px solid #ffffff';
+      }
     } else if (module.state === 'extracting') {
       cell.style.border = '2px solid #ff6600';
       cell.style.background = '#1a0a00';
@@ -655,11 +696,19 @@ class IntegratedGame {
     name.textContent = module.name;
     cell.appendChild(name);
     
-    // Value
+    // Value with enhanced display
     const value = document.createElement('div');
     value.className = 'module-value';
     value.textContent = `$${module.value}`;
     cell.appendChild(value);
+    
+    // Add value badge for high-value items
+    if (module.value >= 2000 && module.state === 'available') {
+      const valueBadge = document.createElement('div');
+      valueBadge.className = 'value-badge';
+      valueBadge.textContent = 'HIGH';
+      cell.appendChild(valueBadge);
+    }
     
     // Condition
     const condition = document.createElement('div');
@@ -695,6 +744,14 @@ class IntegratedGame {
     }
     
     return cell;
+  }
+  
+  private getValueTier(value: number): number {
+    if (value >= 2500) return 5;  // Ultra valuable
+    if (value >= 2000) return 4;  // Very valuable
+    if (value >= 1500) return 3;  // Valuable
+    if (value >= 1000) return 2;  // Moderate
+    return 1;  // Low value
   }
   
   private onExplosion(exploded: Module, affected: Module[]) {
