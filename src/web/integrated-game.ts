@@ -34,9 +34,8 @@ class IntegratedGame {
   private lootGrid: HTMLElement;
   private totalValue: HTMLElement;
   private cargoStatus: HTMLElement;
-  private stabilityBar: HTMLElement;
-  private stabilityValue: HTMLElement;
-  private detectionBar: HTMLElement;
+  private integrityBar: HTMLElement;
+  private integrityValue: HTMLElement;
   private detectionValue: HTMLElement;
   
   // Game systems
@@ -46,14 +45,14 @@ class IntegratedGame {
   private cargoUsed = 0;
   private cargoMax = 100;
   
-  // Module icons
-  private moduleIcons: Record<string, string> = {
-    volatile: '💣',
-    fragile: '💎',
-    heavy: '🛡️',
-    data: '💾',
-    structural: '🏗️',
-    valuable: '✨',
+  // Module type labels
+  private moduleTypeLabels: Record<string, string> = {
+    volatile: 'VOL',
+    fragile: 'FRG',
+    heavy: 'HVY',
+    data: 'DAT',
+    structural: 'STR',
+    valuable: 'VAL',
     empty: '',
   };
 
@@ -75,10 +74,12 @@ class IntegratedGame {
     this.lootGrid = document.getElementById('lootGrid')!;
     this.totalValue = document.getElementById('totalValue')!;
     this.cargoStatus = document.getElementById('cargoStatus')!;
-    this.stabilityBar = document.getElementById('stabilityBar') as HTMLDivElement;
-    this.stabilityValue = document.getElementById('stabilityValue')!;
-    this.detectionBar = document.getElementById('detectionBar') as HTMLDivElement;
+    this.integrityBar = document.getElementById('integrityBar') as HTMLDivElement;
+    this.integrityValue = document.getElementById('integrityValue')!;
     this.detectionValue = document.getElementById('detectionValue')!;
+    
+    // Initialize integrity bar with segments
+    this.initializeIntegrityBar();
     
     // Initialize looting game
     this.lootingGame = new LootingGrid(
@@ -100,17 +101,24 @@ class IntegratedGame {
     // Setup input
     this.setupInput();
     
-
-    
     // Close modal button
     document.getElementById('closeModal')!.addEventListener('click', () => {
       this.exitSite();
     });
     
-
-    
     // Start game loop
     this.gameLoop();
+  }
+  
+  private initializeIntegrityBar() {
+    // Create 20 segments for the integrity bar
+    this.integrityBar.innerHTML = '';
+    for (let i = 0; i < 20; i++) {
+      const segment = document.createElement('div');
+      segment.className = 'integrity-segment';
+      segment.dataset.index = i.toString();
+      this.integrityBar.appendChild(segment);
+    }
   }
   
   private resizeCanvas() {
@@ -173,7 +181,7 @@ class IntegratedGame {
     
     // Show modal
     this.lootModal.classList.add('show');
-    this.modalTitle.textContent = `SALVAGE OPERATION - ${site.gridSite.name}`;
+    this.modalTitle.textContent = `LEGION [${site.gridSite.name.toUpperCase()}]`;
     
     // Mark as visited
     site.visited = true;
@@ -401,60 +409,39 @@ class IntegratedGame {
     const cargoPercent = (state.cargoUsed / state.cargoMax) * 100;
     if (cargoPercent >= 100) {
       this.cargoStatus.style.color = '#ff3300';
-      this.cargoStatus.style.fontWeight = 'bold';
       this.hudCargo.style.color = '#ff3300';
     } else if (cargoPercent >= 80) {
       this.cargoStatus.style.color = '#ff9900';
-      this.cargoStatus.style.fontWeight = 'bold';
       this.hudCargo.style.color = '#ff9900';
     } else {
       this.cargoStatus.style.color = '';
-      this.cargoStatus.style.fontWeight = '';
-      this.hudCargo.style.color = '#ffffff';
+      this.hudCargo.style.color = '#ff8800';
     }
     
-    // Update meters
-    this.stabilityBar.style.width = `${site.siteStability}%`;
+    // Update segmented integrity bar
+    const segments = this.integrityBar.querySelectorAll('.integrity-segment');
+    const totalSegments = segments.length;
+    const filledSegments = Math.floor((site.siteStability / 100) * totalSegments);
     
-    // Calculate and show failure chance
-    const failureChance = this.calculateFailureChance(site.siteStability);
-    if (failureChance > 0) {
-      this.stabilityValue.innerHTML = `${Math.round(site.siteStability)}% <span style="color: #ff3300; font-size: 0.9em;">(${Math.round(failureChance)}% fail)</span>`;
-    } else {
-      this.stabilityValue.textContent = `${Math.round(site.siteStability)}%`;
-    }
+    segments.forEach((segment, index) => {
+      const seg = segment as HTMLElement;
+      if (index < filledSegments) {
+        seg.className = 'integrity-segment';
+        if (site.siteStability <= 20) {
+          seg.classList.add('critical');
+        } else if (site.siteStability <= 40) {
+          seg.classList.add('damaged');
+        }
+      } else {
+        seg.className = 'integrity-segment lost';
+      }
+    });
     
-    this.detectionBar.style.width = `${site.detectionLevel}%`;
+    // Update integrity value
+    this.integrityValue.textContent = `[${Math.round(site.siteStability)}%]`;
+    
+    // Update detection
     this.detectionValue.textContent = `${Math.round(site.detectionLevel)}%`;
-    
-    // Color code stability bar with CSS classes
-    this.stabilityBar.className = 'meter-fill stability';
-    if (site.siteStability <= 20) {
-      this.stabilityBar.classList.add('critical');
-      // Also shake the entire meter container
-      const meterContainer = this.stabilityBar.parentElement;
-      if (meterContainer) {
-        meterContainer.style.animation = 'shake 0.3s infinite';
-      }
-    } else if (site.siteStability <= 40) {
-      this.stabilityBar.classList.add('danger');
-      const meterContainer = this.stabilityBar.parentElement;
-      if (meterContainer) {
-        meterContainer.style.animation = '';
-      }
-    } else if (site.siteStability < 70) {
-      this.stabilityBar.classList.add('warning');
-      const meterContainer = this.stabilityBar.parentElement;
-      if (meterContainer) {
-        meterContainer.style.animation = '';
-      }
-    } else {
-      // Safe - default green color
-      const meterContainer = this.stabilityBar.parentElement;
-      if (meterContainer) {
-        meterContainer.style.animation = '';
-      }
-    }
     
     // Update existing module cells instead of re-rendering everything
     this.updateModuleCells();
@@ -482,18 +469,21 @@ class IntegratedGame {
       // Update class
       cell.className = `grid-cell ${module.state}`;
       
-      // Update visual state
-      if (module.state === 'available') {
-        cell.style.border = '2px solid #ffffff';
-        cell.style.background = '#111111';
-        cell.style.animation = '';
-        cell.style.opacity = '1';
-      } else if (module.state === 'extracting') {
-        cell.style.border = '2px solid #ff6600';
-        cell.style.background = '#1a0a00';
-        cell.style.opacity = '1';
-        
-        // Update progress bar if it exists
+      // Add rarity class
+      if (module.state === 'available' && module.value > 0) {
+        if (module.value >= 2000 || module.type === 'valuable') {
+          cell.classList.add('rare');
+        } else if (module.type === 'volatile' || module.type === 'fragile') {
+          cell.classList.add('special');
+        } else {
+          cell.classList.add('common');
+        }
+      } else if (module.state === 'destroyed' || module.type === 'empty') {
+        cell.classList.add('corrupted');
+      }
+      
+      // Update progress bar for extracting modules
+      if (module.state === 'extracting') {
         const progressFill = cell.querySelector('.progress-fill') as HTMLElement;
         if (progressFill) {
           progressFill.style.width = `${module.extractProgress * 100}%`;
@@ -507,36 +497,16 @@ class IntegratedGame {
           progressBar.appendChild(fill);
           cell.appendChild(progressBar);
         }
-      } else if (module.state === 'looted') {
-        cell.style.border = '2px solid #333333';
-        cell.style.opacity = '0.3';
-        cell.style.background = '#000000';
-        cell.style.animation = '';
-      } else if (module.state === 'damaged') {
-        cell.style.border = '2px solid #ff3300';
-        cell.style.opacity = '0.6';
-        cell.style.background = '#220000';
-        cell.style.animation = '';
-        // Remove any progress bars from damaged modules
-        const progressBar = cell.querySelector('.progress-bar');
-        if (progressBar) progressBar.remove();
-      } else if (module.state === 'destroyed') {
-        // Apply failure animation if flagged
-        if (module.failureAnimation) {
-          cell.classList.add('extraction-failed');
-          // Clear the flag after animation
-          setTimeout(() => {
-            module.failureAnimation = false;
-            cell.classList.remove('extraction-failed');
-          }, 500);
-        }
-        cell.style.border = '1px solid #222222';
-        cell.style.opacity = '0.1';
-        cell.style.background = '#000000';
-        cell.style.animation = module.failureAnimation ? 'failureFlash 0.5s ease-out' : '';
-        // Remove any progress bars from destroyed modules
-        const progressBar = cell.querySelector('.progress-bar');
-        if (progressBar) progressBar.remove();
+      }
+      
+      // Apply failure animation if flagged
+      if (module.state === 'destroyed' && module.failureAnimation) {
+        cell.classList.add('extraction-failed');
+        // Clear the flag after animation
+        setTimeout(() => {
+          module.failureAnimation = false;
+          cell.classList.remove('extraction-failed');
+        }, 500);
       }
       
       // Update instability bar for volatile modules
@@ -557,7 +527,7 @@ class IntegratedGame {
         
         // Add visual warning for high instability
         if (module.instability > 50) {
-          cell.style.animation = 'shake 0.5s infinite';
+          cell.classList.add('shaking');
         }
       }
     }
@@ -579,51 +549,21 @@ class IntegratedGame {
       return a.gridX - b.gridX;
     });
     
-    // Find top 3 most valuable available modules for crown indicators
-    const availableModules = site.modules
-      .filter(m => m.state === 'available' && m.value > 0)
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 3);
-    
     for (const module of sortedModules) {
       const cell = this.createCell(module);
-      
-      // Add crown indicator for top 3 most valuable modules
-      const topValueRank = availableModules.indexOf(module);
-      if (topValueRank !== -1) {
-        const crown = document.createElement('div');
-        crown.className = 'value-crown';
-        
-        if (topValueRank === 0) {
-          crown.textContent = '👑';
-          crown.classList.add('crown-gold');
-        } else if (topValueRank === 1) {
-          crown.textContent = '🥈';
-          crown.classList.add('crown-silver');
-        } else if (topValueRank === 2) {
-          crown.textContent = '🥉';
-          crown.classList.add('crown-bronze');
-        }
-        
-        cell.appendChild(crown);
-      }
-      
       this.lootGrid.appendChild(cell);
       
-      // Add click handler directly to each cell (like the working grid version)
+      // Add click handler directly to each cell
       if (module.state === 'available') {
         cell.addEventListener('click', () => {
-          console.log('Direct click on available module:', module.name);
           this.lootingGame.startExtraction(module.id);
         });
       } else if (module.state === 'extracting') {
         cell.addEventListener('click', () => {
-          console.log('Direct click on extracting module:', module.name);
           this.lootingGame.cancelExtraction(module.id);
         });
         cell.addEventListener('contextmenu', (e) => {
           e.preventDefault();
-          console.log('Right-click on extracting module:', module.name);
           this.lootingGame.cancelExtraction(module.id);
         });
       }
@@ -635,39 +575,17 @@ class IntegratedGame {
     cell.className = `grid-cell ${module.state}`;
     cell.dataset.moduleId = module.id;
     
-    // Calculate value tier for styling (only for available modules)
+    // Determine rarity/color class based on value and type
     if (module.state === 'available' && module.value > 0) {
-      const valueTier = this.getValueTier(module.value);
-      cell.classList.add(`value-tier-${valueTier}`);
-    }
-    
-    // Industrial minimal styling
-    if (module.state === 'available') {
-      // Value-based border colors override default
-      if (module.value >= 2500) {
-        cell.style.border = '2px solid #ffaa00';
-      } else if (module.value >= 2000) {
-        cell.style.border = '2px solid #ff9900';
-      } else if (module.value >= 1500) {
-        cell.style.border = '2px solid #aa6600';
+      if (module.value >= 2000 || module.type === 'valuable') {
+        cell.classList.add('rare');
+      } else if (module.type === 'volatile' || module.type === 'fragile') {
+        cell.classList.add('special');
       } else {
-        cell.style.border = '2px solid #ffffff';
+        cell.classList.add('common');
       }
-    } else if (module.state === 'extracting') {
-      cell.style.border = '2px solid #ff6600';
-      cell.style.background = '#1a0a00';
-    } else if (module.state === 'looted') {
-      cell.style.border = '2px solid #333333';
-      cell.style.opacity = '0.3';
-      cell.style.background = '#000000';
-    } else if (module.state === 'damaged') {
-      cell.style.border = '2px solid #ff3300';
-      cell.style.opacity = '0.6';
-      cell.style.background = '#220000';
     } else if (module.state === 'destroyed' || module.type === 'empty') {
-      cell.style.opacity = '0.1';
-      cell.style.border = '1px solid #222222';
-      cell.style.background = '#000000';
+      cell.classList.add('corrupted');
     }
     
     if (module.isShaking) {
@@ -678,37 +596,28 @@ class IntegratedGame {
       return cell;
     }
     
-    // Icon
-    const icon = document.createElement('div');
-    icon.className = 'module-icon';
-    icon.textContent = this.moduleIcons[module.type] || '📦';
-    cell.appendChild(icon);
+    // Type indicator dot
+    const typeIndicator = document.createElement('div');
+    typeIndicator.className = `module-type-indicator ${module.type}`;
+    cell.appendChild(typeIndicator);
     
-    // Type badge
-    const typeBadge = document.createElement('div');
-    typeBadge.className = `module-type ${module.type}`;
-    typeBadge.textContent = module.type.substring(0, 3).toUpperCase();
-    cell.appendChild(typeBadge);
+    // Type text
+    const typeText = document.createElement('div');
+    typeText.className = 'module-type-text';
+    typeText.textContent = this.moduleTypeLabels[module.type] || 'UNK';
+    cell.appendChild(typeText);
     
     // Name
     const name = document.createElement('div');
     name.className = 'module-name';
-    name.textContent = module.name;
+    name.textContent = module.name.toUpperCase();
     cell.appendChild(name);
     
-    // Value with enhanced display
+    // Value
     const value = document.createElement('div');
     value.className = 'module-value';
-    value.textContent = `$${module.value}`;
+    value.textContent = module.value.toLocaleString();
     cell.appendChild(value);
-    
-    // Add value badge for high-value items
-    if (module.value >= 2000 && module.state === 'available') {
-      const valueBadge = document.createElement('div');
-      valueBadge.className = 'value-badge';
-      valueBadge.textContent = 'HIGH';
-      cell.appendChild(valueBadge);
-    }
     
     // Condition
     const condition = document.createElement('div');
@@ -744,14 +653,6 @@ class IntegratedGame {
     }
     
     return cell;
-  }
-  
-  private getValueTier(value: number): number {
-    if (value >= 2500) return 5;  // Ultra valuable
-    if (value >= 2000) return 4;  // Very valuable
-    if (value >= 1500) return 3;  // Valuable
-    if (value >= 1000) return 2;  // Moderate
-    return 1;  // Low value
   }
   
   private onExplosion(exploded: Module, affected: Module[]) {
