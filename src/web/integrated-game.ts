@@ -539,9 +539,9 @@ class IntegratedGame {
     
     if (!site) return;
     
-    // Set grid dimensions
-    this.lootGrid.style.gridTemplateColumns = `repeat(${site.width}, 120px)`;
-    this.lootGrid.style.gridTemplateRows = `repeat(${site.height}, 120px)`;
+    // Set grid dimensions to fill available space
+    this.lootGrid.style.gridTemplateColumns = `repeat(${site.width}, 1fr)`;
+    this.lootGrid.style.gridTemplateRows = `repeat(${site.height}, 1fr)`;
     this.lootGrid.innerHTML = '';
     
     // Create a grid map to track which cells are occupied
