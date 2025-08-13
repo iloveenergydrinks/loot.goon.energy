@@ -488,15 +488,41 @@ class IntegratedGame {
       
       // Update status overlay
       let statusEl = cell.querySelector('.module-status') as HTMLElement;
+      
+      // Handle available modules - clean up any leftover extraction UI
+      if (module.state === 'available') {
+        // Remove progress bar if exists
+        const progressBar = cell.querySelector('.progress-bar');
+        if (progressBar) progressBar.remove();
+        
+        // Update or create READY status
+        if (statusEl && (statusEl.classList.contains('extracting') || 
+                         statusEl.classList.contains('complete') || 
+                         statusEl.classList.contains('damaged') || 
+                         statusEl.classList.contains('failed'))) {
+          statusEl.className = 'module-status ready';
+          statusEl.textContent = 'READY';
+        } else if (!statusEl || !statusEl.classList.contains('ready')) {
+          if (!statusEl) {
+            statusEl = document.createElement('div');
+            cell.appendChild(statusEl);
+          }
+          statusEl.className = 'module-status ready';
+          statusEl.textContent = 'READY';
+        }
+      }
+      
       if (module.state === 'extracting') {
         if (!statusEl) {
           statusEl = document.createElement('div');
           statusEl.className = 'module-status extracting';
           cell.appendChild(statusEl);
+        } else {
+          // Update existing status element (might be READY status)
+          statusEl.className = 'module-status extracting';
         }
         const timeLeft = Math.round(module.extractTime * (1 - module.extractProgress));
         statusEl.textContent = `EXTRACTING...${timeLeft}s`;
-        statusEl.className = 'module-status extracting';
         
         // Update progress bar
         const progressFill = cell.querySelector('.progress-fill') as HTMLElement;
@@ -512,17 +538,44 @@ class IntegratedGame {
           progressBar.appendChild(fill);
           cell.appendChild(progressBar);
         }
-      } else if (module.state === 'looted' && statusEl) {
+      } else if (module.state === 'looted') {
+        // Update or create status for looted
+        if (!statusEl) {
+          statusEl = document.createElement('div');
+          cell.appendChild(statusEl);
+        }
         statusEl.className = 'module-status complete';
         statusEl.textContent = 'COMPLETE';
-      } else if (module.state === 'damaged' && statusEl) {
+        
+        // Remove progress bar if exists
+        const progressBar = cell.querySelector('.progress-bar');
+        if (progressBar) progressBar.remove();
+        
+      } else if (module.state === 'damaged') {
+        // Update or create status for damaged
+        if (!statusEl) {
+          statusEl = document.createElement('div');
+          cell.appendChild(statusEl);
+        }
         statusEl.className = 'module-status damaged';
         statusEl.textContent = 'DAMAGED';
-      } else if (module.state === 'destroyed' && !statusEl) {
-        statusEl = document.createElement('div');
+        
+        // Remove progress bar if exists
+        const progressBar = cell.querySelector('.progress-bar');
+        if (progressBar) progressBar.remove();
+        
+      } else if (module.state === 'destroyed') {
+        // Always update or create status for destroyed
+        if (!statusEl) {
+          statusEl = document.createElement('div');
+          cell.appendChild(statusEl);
+        }
         statusEl.className = 'module-status failed';
         statusEl.textContent = 'FAILED';
-        cell.appendChild(statusEl);
+        
+        // Remove progress bar if exists
+        const progressBar = cell.querySelector('.progress-bar');
+        if (progressBar) progressBar.remove();
       }
       
       // Apply failure animation if flagged
