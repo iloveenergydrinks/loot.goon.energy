@@ -617,8 +617,9 @@ class IntegratedGame {
         }
       }
       
-      // Update instability bar for volatile modules
+      // Update instability indicators for volatile modules
       if (module.type === 'volatile' && module.instability > 0) {
+        // Update instability bar
         const instabilityFill = cell.querySelector('.instability-fill') as HTMLElement;
         if (instabilityFill) {
           instabilityFill.style.width = `${module.instability}%`;
@@ -633,10 +634,48 @@ class IntegratedGame {
           cell.appendChild(instabilityBar);
         }
         
-        // Add visual warning for high instability
-        if (module.instability > 50) {
-          cell.classList.add('shaking');
+        // Add instability percentage display
+        let percentEl = cell.querySelector('.instability-percent') as HTMLElement;
+        if (!percentEl && module.state === 'available') {
+          percentEl = document.createElement('div');
+          percentEl.className = 'instability-percent';
+          cell.appendChild(percentEl);
         }
+        if (percentEl) {
+          percentEl.textContent = `${Math.round(module.instability)}%`;
+          if (module.instability > 75) {
+            percentEl.classList.add('critical');
+          } else {
+            percentEl.classList.remove('critical');
+          }
+        }
+        
+        // Add visual warnings for high instability
+        if (module.instability > 50) {
+          cell.classList.add('critical-instability');
+          
+          // Add warning text for very high instability
+          if (module.instability > 75) {
+            let warningEl = cell.querySelector('.instability-warning') as HTMLElement;
+            if (!warningEl) {
+              warningEl = document.createElement('div');
+              warningEl.className = 'instability-warning';
+              warningEl.textContent = 'CRITICAL!';
+              cell.appendChild(warningEl);
+            }
+          }
+        } else {
+          cell.classList.remove('critical-instability');
+          const warningEl = cell.querySelector('.instability-warning');
+          if (warningEl) warningEl.remove();
+        }
+      } else {
+        // Clean up instability indicators if not volatile or no instability
+        cell.classList.remove('critical-instability');
+        const warningEl = cell.querySelector('.instability-warning');
+        if (warningEl) warningEl.remove();
+        const percentEl = cell.querySelector('.instability-percent');
+        if (percentEl) percentEl.remove();
       }
     }
   }
@@ -755,9 +794,7 @@ class IntegratedGame {
       cell.classList.add('corrupted');
     }
     
-    if (module.isShaking) {
-      cell.classList.add('shaking');
-    }
+
     
     if (module.state === 'destroyed' || module.type === 'empty') {
       // Add status for destroyed/empty
@@ -855,6 +892,29 @@ class IntegratedGame {
         
         // Make cell identifiable as volatile for hover effects
         cell.classList.add('volatile');
+        
+        // Add initial instability indicators if module has instability
+        if (module.instability > 0) {
+          // Add instability percentage
+          const percentEl = document.createElement('div');
+          percentEl.className = 'instability-percent';
+          percentEl.textContent = `${Math.round(module.instability)}%`;
+          if (module.instability > 75) {
+            percentEl.classList.add('critical');
+          }
+          cell.appendChild(percentEl);
+          
+          // Add critical warning if high instability
+          if (module.instability > 50) {
+            cell.classList.add('critical-instability');
+            if (module.instability > 75) {
+              const warningEl = document.createElement('div');
+              warningEl.className = 'instability-warning';
+              warningEl.textContent = 'CRITICAL!';
+              cell.appendChild(warningEl);
+            }
+          }
+        }
         
         // Add mouse events to show explosion radius
         cell.style.pointerEvents = 'auto';
@@ -1055,15 +1115,15 @@ class IntegratedGame {
         damage.style.transform = 'translate(-50%, -50%)';
         cell.appendChild(damage);
         
-        // Add shaking
-        cell.classList.add('shaking');
+        // Add explosion damage effect
+        cell.style.animation = 'damage-flash 0.5s';
         
         // Clean up after animations
         setTimeout(() => {
           impact.remove();
           damage.remove();
           damageSource.remove();
-          cell.classList.remove('shaking');
+          cell.style.animation = '';
         }, 800);
       }
     }, 100);

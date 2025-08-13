@@ -340,14 +340,89 @@
       opacity: 0.6;
     }
 
-    .grid-cell.shaking {
-      animation: shake 0.2s infinite;
+    /* Instability warning indicators */
+    .instability-warning {
+      position: absolute;
+      top: 5px;
+      left: 5px;
+      padding: 2px 6px;
+      background: rgba(255, 0, 0, 0.9);
+      border: 1px solid #ff0000;
+      color: #ffff00;
+      font-size: 11px;
+      font-weight: bold;
+      border-radius: 2px;
+      z-index: 12;
+      pointer-events: none;
+      animation: blink-warning 0.5s infinite;
     }
-
-    @keyframes shake {
-      0%, 100% { transform: translateX(0); }
-      25% { transform: translateX(-2px) rotate(-1deg); }
-      75% { transform: translateX(2px) rotate(1deg); }
+    
+    @keyframes blink-warning {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+    
+    .grid-cell.critical-instability {
+      box-shadow: inset 0 0 20px rgba(255, 0, 0, 0.6);
+      border-color: #ff0000 !important;
+      animation: critical-pulse 1s infinite;
+    }
+    
+    @keyframes critical-pulse {
+      0%, 100% { 
+        box-shadow: inset 0 0 20px rgba(255, 0, 0, 0.6);
+        border-width: 2px;
+      }
+      50% { 
+        box-shadow: inset 0 0 30px rgba(255, 0, 0, 0.9), 0 0 15px rgba(255, 0, 0, 0.5);
+        border-width: 3px;
+      }
+    }
+    
+    .instability-percent {
+      position: absolute;
+      bottom: 25px;
+      right: 5px;
+      padding: 2px 4px;
+      background: rgba(0, 0, 0, 0.9);
+      border: 1px solid #ff4444;
+      color: #ff4444;
+      font-size: 10px;
+      font-weight: bold;
+      border-radius: 2px;
+      pointer-events: none;
+      z-index: 11;
+    }
+    
+    .instability-percent.critical {
+      background: rgba(255, 0, 0, 0.9);
+      color: #ffff00;
+      border-color: #ffff00;
+      animation: blink-critical 0.3s infinite;
+    }
+    
+    @keyframes blink-critical {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.8; }
+    }
+    
+    @keyframes damage-flash {
+      0% { 
+        transform: scale(1);
+        filter: brightness(1);
+      }
+      25% { 
+        transform: scale(0.98);
+        filter: brightness(1.5) saturate(0.5);
+      }
+      50% { 
+        transform: scale(1.02);
+        filter: brightness(0.8) saturate(0.5);
+      }
+      100% { 
+        transform: scale(1);
+        filter: brightness(1);
+      }
     }
 
     /* Module type indicator */
