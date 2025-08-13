@@ -11,10 +11,7 @@ export const DEFAULT_SIM_CONFIG: SimulationConfig = {
   stabilizeTimeSec: 6,
   stabilizeNoisePerSec: 4,
   stabilizeEffectMultiplier: 0.5,
-  detection: {
-    detectionThreshold: 100,
-    sensitivity: 0.5,
-  },
+
 };
 
 export interface StanceModifiers {

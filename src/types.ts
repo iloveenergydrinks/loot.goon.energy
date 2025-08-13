@@ -58,10 +58,7 @@ export interface OperationOptions {
   autoStabilizeVolatiles: boolean; // perform once-per-site stabilization if beneficial
 }
 
-export interface DetectionModelConfig {
-  detectionThreshold: number; // cumulative score to trigger detection
-  sensitivity: number; // higher = faster detection per noise/sec
-}
+
 
 export interface SimulationConfig {
   tickRateHz: number; // ticks per second
@@ -74,7 +71,7 @@ export interface SimulationConfig {
   stabilizeTimeSec: number; // time cost for stabilization action
   stabilizeNoisePerSec: number;
   stabilizeEffectMultiplier: number; // e.g., 0.5 halves future volatile risks
-  detection: DetectionModelConfig;
+
 }
 
 export interface ExtractionEventBase {
@@ -90,7 +87,7 @@ export interface ExtractionEventBase {
     | 'NodeDamaged'
     | 'NodeDestroyed'
     | 'StabilizedVolatiles'
-    | 'DetectionProgress'
+
     | 'Aborted'
     | 'Completed';
   message?: string;
@@ -118,7 +115,7 @@ export type ExtractionEvent =
   | (ExtractionEventBase & { type: 'NodeDamaged'; node: LootNode; message: string })
   | (ExtractionEventBase & { type: 'NodeDestroyed'; node: LootNode; message: string })
   | (ExtractionEventBase & { type: 'StabilizedVolatiles' })
-  | (ExtractionEventBase & { type: 'DetectionProgress'; message: string })
+
   | (ExtractionEventBase & { type: 'Aborted' })
   | (ExtractionEventBase & { type: 'Completed' });
 

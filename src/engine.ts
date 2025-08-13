@@ -12,7 +12,7 @@ import {
 import { DEFAULT_SIM_CONFIG, STANCE_MODIFIERS } from './constants.js';
 import { clamp } from './util.js';
 import { addHazard, checkThresholdEvents, createHazardState, HazardState } from './hazard.js';
-import { advanceDetection, createDetectionState, DetectionState } from './detection.js';
+
 
 export interface EngineInit {
   site: Site;
@@ -36,7 +36,7 @@ export class LootingEngine {
   private currentNodeTotalSec = 0;
   private currentNode: LootNode | null = null;
   private hazardState: HazardState = createHazardState();
-  private detection: DetectionState = createDetectionState();
+
 
   public constructor(init: EngineInit) {
     this.site = init.site;
@@ -75,7 +75,7 @@ export class LootingEngine {
       running: this.isRunning,
       currentNode: this.currentNode,
       currentNodeProgressSec: this.currentNodeProgressSec,
-      detection: this.detection,
+
     };
   }
 
@@ -145,19 +145,18 @@ export class LootingEngine {
       // Apply one-time hazard/noise during the stabilization window
       const ticks = Math.ceil((dur * this.config.tickRateHz) || 1);
       for (let i = 0; i < ticks; i++) {
-        this.tickHazardAndDetection(noise, 0, 1 / this.config.tickRateHz, emit);
+        this.tickHazard(0, 1 / this.config.tickRateHz, emit);
       }
     }
   }
 
-  private tickHazardAndDetection(
-    currentItemNoisePerSec: number,
+  private tickHazard(
+
     currentItemHazardPerSec: number,
     dtSec: number,
     emit: (e: ExtractionEvent) => void,
   ): void {
     const stance = STANCE_MODIFIERS[this.options.stance];
-    const noisePerSec = this.site.baselineNoisePerSec + currentItemNoisePerSec * stance.noiseMultiplier;
     // hazard grows with current item hazard rate scaled by stance
     const hazardPerSec = currentItemHazardPerSec * stance.hazardMultiplier;
     addHazard(this.site, hazardPerSec * dtSec, this.config);
@@ -174,10 +173,7 @@ export class LootingEngine {
       },
       (threshold) => emit({ type: 'HazardThreshold', timeSec: this.timeSec, threshold }),
     );
-    // detection
-    const res = advanceDetection(this.detection, noisePerSec, dtSec, this.config.detection);
-    const etaStr = res.etaSec === null ? '—' : `${res.etaSec.toFixed(1)}s`;
-    emit({ type: 'DetectionProgress', timeSec: this.timeSec, message: `ETA ${etaStr}` });
+
   }
 
   public runStep(emit: (e: ExtractionEvent) => void): void {
@@ -194,8 +190,8 @@ export class LootingEngine {
 
     const node = this.currentNode!;
     const stance = STANCE_MODIFIERS[this.options.stance];
-    // tick hazard/detection using the node's base rates
-    this.tickHazardAndDetection(node.baseNoisePerSec, node.baseHazardPerSec, dtSec, emit);
+    // tick hazard using the node's base rates
+    this.tickHazard(node.baseHazardPerSec, dtSec, emit);
 
     // progress extraction
     this.currentNodeProgressSec += dtSec;

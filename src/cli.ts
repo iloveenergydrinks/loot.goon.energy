@@ -31,9 +31,7 @@ function logEvent(e: any) {
     case 'NodeDestroyed':
       console.log(`[${e.timeSec.toFixed(1)}s] 🔴 ${e.node.name}: ${e.message}`);
       break;
-    case 'DetectionProgress':
-      if (e.message) console.log(`[${e.timeSec.toFixed(1)}s] 👂 Detection ${e.message}`);
-      break;
+
     case 'Completed':
       console.log(`[${e.timeSec.toFixed(1)}s] 🏁 Operation complete`);
       break;

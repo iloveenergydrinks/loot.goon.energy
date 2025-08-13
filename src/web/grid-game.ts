@@ -29,7 +29,7 @@ export interface GridSite {
   height: number;
   modules: Module[];
   siteStability: number; // 0-100
-  detectionLevel: number; // 0-100
+
   activeExtractions: Set<string>;
 }
 
@@ -162,7 +162,7 @@ export class LootingGrid {
       height,
       modules,
       siteStability: 100,
-      detectionLevel: 0,
+
       activeExtractions: new Set(),
     };
   }
@@ -297,8 +297,7 @@ export class LootingGrid {
         return;
       }
       
-      // Increase detection
-      site.detectionLevel = Math.min(site.detectionLevel + 0.5, 100);
+
       
       this.onUpdate();
     }, 100);
@@ -568,17 +567,7 @@ export class LootingGrid {
     const site = this.state.currentSite;
     if (!site) return;
 
-    // Slowly reduce detection when not extracting
-    if (site.activeExtractions.size === 0) {
-      site.detectionLevel = Math.max(0, site.detectionLevel - 0.2);
-    }
 
-    // Random events at high detection
-    if (site.detectionLevel > 80 && Math.random() < 0.01) {
-      // Patrol arrived - abort all extractions
-      this.clearAllExtractions();
-      site.detectionLevel = 100;
-    }
 
     this.onUpdate();
   }

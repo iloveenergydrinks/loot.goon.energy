@@ -12,8 +12,7 @@ const totalValueElement = document.getElementById('totalValue') as HTMLElement;
 const cargoStatusElement = document.getElementById('cargoStatus') as HTMLElement;
 const stabilityBar = document.getElementById('stabilityBar') as HTMLDivElement;
 const stabilityValue = document.getElementById('stabilityValue') as HTMLElement;
-const detectionBar = document.getElementById('detectionBar') as HTMLDivElement;
-const detectionValue = document.getElementById('detectionValue') as HTMLElement;
+
 
 // Module icons
 const moduleIcons: Record<string, string> = {
@@ -241,8 +240,7 @@ function updateUI() {
   stabilityBar.style.width = `${site.siteStability}%`;
   stabilityValue.textContent = `${Math.round(site.siteStability)}%`;
   
-  detectionBar.style.width = `${site.detectionLevel}%`;
-  detectionValue.textContent = `${Math.round(site.detectionLevel)}%`;
+
   
   // Re-render grid to update cell states
   renderGrid();

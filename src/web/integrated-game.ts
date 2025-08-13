@@ -36,7 +36,7 @@ class IntegratedGame {
   private cargoStatus: HTMLElement;
   private integrityBar: HTMLElement;
   private integrityValue: HTMLElement;
-  private detectionValue: HTMLElement;
+
   
   // Game systems
   private lootingGame: LootingGrid;
@@ -76,7 +76,7 @@ class IntegratedGame {
     this.cargoStatus = document.getElementById('cargoStatus')!;
     this.integrityBar = document.getElementById('integrityBar') as HTMLDivElement;
     this.integrityValue = document.getElementById('integrityValue')!;
-    this.detectionValue = document.getElementById('detectionValue')!;
+
     
     // Initialize integrity bar with segments
     this.initializeIntegrityBar();
@@ -440,8 +440,7 @@ class IntegratedGame {
     // Update integrity value
     this.integrityValue.textContent = `[${Math.round(site.siteStability)}%]`;
     
-    // Update detection
-    this.detectionValue.textContent = `${Math.round(site.detectionLevel)}%`;
+
     
     // Update existing module cells instead of re-rendering everything
     this.updateModuleCells();

@@ -21,7 +21,7 @@ const lootGrid = document.getElementById('lootGrid')!;
 const queueList = document.getElementById('queueList')!;
 const hazardValue = document.getElementById('hazardValue')!;
 const hazardBar = document.getElementById('hazardBar') as HTMLDivElement;
-const detectionEta = document.getElementById('detectionEta')!;
+
 const cargoStatus = document.getElementById('cargoStatus')!;
 const waitForSpace = document.getElementById('waitForSpace') as HTMLInputElement;
 const autoStabilize = document.getElementById('autoStabilize') as HTMLInputElement;
@@ -209,10 +209,7 @@ function onEngineEvent(e: any) {
   hazardBar.style.width = `${state.site.hazard}%`;
   hazardValue.textContent = `${Math.round(state.site.hazard)}%`;
   
-  // Update detection
-  if (e.type === 'DetectionProgress' && e.message) {
-    detectionEta.textContent = e.message.replace('ETA ', '');
-  }
+
   
   // Update UI on changes
   if (e.type === 'ItemTransferred' || e.type === 'ItemSkipped' || e.type === 'NodeDestroyed') {
