@@ -678,14 +678,6 @@ class IntegratedGame {
     value.textContent = module.value.toLocaleString();
     cell.appendChild(value);
     
-    // Quantity indicator for multi-cell modules
-    if (module.width > 1 || module.height > 1) {
-      const quantity = document.createElement('div');
-      quantity.className = 'module-quantity';
-      quantity.textContent = `x${module.width * module.height}`;
-      cell.appendChild(quantity);
-    }
-    
     // Condition
     const condition = document.createElement('div');
     condition.className = 'module-condition';

@@ -112,9 +112,21 @@
       background: #000000;
       display: none;
       z-index: 100;
+      padding: 40px;
     }
 
     #lootModal.show {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .modal-container {
+      background: var(--bg-main);
+      border: 2px solid #222;
+      max-width: 1400px;
+      max-height: 90vh;
+      width: 100%;
       display: flex;
       flex-direction: column;
     }
@@ -177,6 +189,7 @@
       display: flex;
       overflow: hidden;
       background: var(--bg-main);
+      min-height: 0;
     }
 
     .grid-container {
@@ -184,8 +197,9 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 40px;
+      padding: 20px;
       position: relative;
+      overflow: auto;
     }
 
     .grid-wrapper {
@@ -386,19 +400,6 @@
       margin-right: 2px;
       color: #cc6600;
     }
-    
-    .module-quantity {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      font-size: 36px;
-      font-weight: bold;
-      color: #404040;
-      text-shadow: 0 0 8px rgba(0,0,0,0.9);
-      opacity: 0.5;
-      z-index: 1;
-    }
 
     .module-condition {
       position: absolute;
@@ -465,6 +466,7 @@
       flex-direction: column;
       gap: 20px;
       overflow-y: auto;
+      max-height: 100%;
     }
 
     .panel {
@@ -513,10 +515,6 @@
 
     /* Integrity Bar */
     .integrity-container {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
       height: 60px;
       background: linear-gradient(180deg, #0a0a0a 0%, #000000 100%);
       border-top: 2px solid #222;
@@ -524,7 +522,6 @@
       display: flex;
       align-items: center;
       gap: 20px;
-      z-index: 90;
     }
     
     .integrity-label {
@@ -648,48 +645,50 @@
 
     <!-- Loot Modal -->
     <div id="lootModal">
-      <div class="modal-header">
-        <div class="modal-title" id="modalTitle">LEGION [CARGO-HOLD]</div>
-        <div class="modal-controls">
-          <button class="close-btn" id="closeModal">X</button>
-        </div>
-      </div>
-      
-      <div class="modal-content">
-        <div class="grid-container">
-          <div class="grid-wrapper">
-            <div id="lootGrid" class="loot-grid"></div>
+      <div class="modal-container">
+        <div class="modal-header">
+          <div class="modal-title" id="modalTitle">LEGION [CARGO-HOLD]</div>
+          <div class="modal-controls">
+            <button class="close-btn" id="closeModal">X</button>
           </div>
         </div>
         
-        <div class="sidebar">
-          <div class="panel">
-            <div class="panel-title">EXTRACTION STATUS</div>
-            <div class="stat-row">
-              <span class="stat-label">Value</span>
-              <span class="stat-value credits" id="totalValue">0</span>
-            </div>
-            <div class="stat-row">
-              <span class="stat-label">Cargo</span>
-              <span class="stat-value" id="cargoStatus">0/100</span>
+        <div class="modal-content">
+          <div class="grid-container">
+            <div class="grid-wrapper">
+              <div id="lootGrid" class="loot-grid"></div>
             </div>
           </div>
+          
+          <div class="sidebar">
+            <div class="panel">
+              <div class="panel-title">EXTRACTION STATUS</div>
+              <div class="stat-row">
+                <span class="stat-label">Value</span>
+                <span class="stat-value credits" id="totalValue">0</span>
+              </div>
+              <div class="stat-row">
+                <span class="stat-label">Cargo</span>
+                <span class="stat-value" id="cargoStatus">0/100</span>
+              </div>
+            </div>
 
-          <div class="panel">
-            <div class="panel-title">DETECTION</div>
-            <div class="stat-row">
-              <span class="stat-label">Level</span>
-              <span class="stat-value" id="detectionValue">0%</span>
+            <div class="panel">
+              <div class="panel-title">DETECTION</div>
+              <div class="stat-row">
+                <span class="stat-label">Level</span>
+                <span class="stat-value" id="detectionValue">0%</span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-      
-      <!-- Integrity Bar -->
-      <div class="integrity-container">
-        <div class="integrity-label">WRECK INTEGRITY</div>
-        <div class="integrity-bar" id="integrityBar"></div>
-        <div class="integrity-value" id="integrityValue">[100%]</div>
+        
+        <!-- Integrity Bar -->
+        <div class="integrity-container">
+          <div class="integrity-label">WRECK INTEGRITY</div>
+          <div class="integrity-bar" id="integrityBar"></div>
+          <div class="integrity-value" id="integrityValue">[100%]</div>
+        </div>
       </div>
     </div>
   </div>
