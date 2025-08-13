@@ -14,6 +14,8 @@ export interface Module {
   extractProgress: number; // 0-1
   gridX: number;
   gridY: number;
+  width: number; // Grid cells wide
+  height: number; // Grid cells tall
   instability: number; // 0-100
   isShaking?: boolean;
   failureAnimation?: boolean; // Flag for failure animation
@@ -62,54 +64,93 @@ export class LootingGrid {
 
   generateSite(width: number = 6, height: number = 4): GridSite {
     const modules: Module[] = [];
+    const occupiedCells = new Set<string>();
     
-    // Fewer modules, more strategic placement
-    const moduleCount = Math.floor((width * height) * 0.4); // Only 40% filled
-    const positions = new Set<string>();
+    // Define module size patterns for different types
+    const moduleSizes: Record<ModuleType, Array<{w: number, h: number}>> = {
+      volatile: [{w: 1, h: 1}, {w: 2, h: 1}],  // Can be 1x1 or 2x1
+      fragile: [{w: 1, h: 1}],
+      heavy: [{w: 2, h: 1}, {w: 3, h: 1}, {w: 1, h: 2}],  // Large items
+      data: [{w: 1, h: 1}],
+      structural: [{w: 2, h: 1}, {w: 1, h: 2}],
+      valuable: [{w: 1, h: 1}, {w: 2, h: 1}],
+      empty: [{w: 1, h: 1}],
+    };
     
-    // Place some guaranteed interesting modules
+    // Place some guaranteed interesting modules with varying sizes
     const guaranteedModules = [
+      { type: 'heavy' as ModuleType, count: 1 },  // At least one large module
       { type: 'volatile' as ModuleType, count: 2 },
       { type: 'valuable' as ModuleType, count: 2 },
       { type: 'fragile' as ModuleType, count: 1 },
-      { type: 'data' as ModuleType, count: 1 },
+      { type: 'data' as ModuleType, count: 2 },
     ];
+    
+    // Helper function to check if a module can fit at position
+    const canPlaceModule = (x: number, y: number, w: number, h: number): boolean => {
+      if (x + w > width || y + h > height) return false;
+      for (let dy = 0; dy < h; dy++) {
+        for (let dx = 0; dx < w; dx++) {
+          if (occupiedCells.has(`${x + dx},${y + dy}`)) return false;
+        }
+      }
+      return true;
+    };
+    
+    // Helper function to mark cells as occupied
+    const markOccupied = (x: number, y: number, w: number, h: number) => {
+      for (let dy = 0; dy < h; dy++) {
+        for (let dx = 0; dx < w; dx++) {
+          occupiedCells.add(`${x + dx},${y + dy}`);
+        }
+      }
+    };
     
     // Place guaranteed modules
     for (const { type, count } of guaranteedModules) {
       for (let i = 0; i < count; i++) {
-        let x, y;
-        do {
-          x = Math.floor(Math.random() * width);
-          y = Math.floor(Math.random() * height);
-        } while (positions.has(`${x},${y}`));
+        const sizes = moduleSizes[type];
+        const size = sizes[Math.floor(Math.random() * sizes.length)];
         
-        positions.add(`${x},${y}`);
-        modules.push(this.createModule(x, y, type));
+        let placed = false;
+        let attempts = 0;
+        while (!placed && attempts < 50) {
+          const x = Math.floor(Math.random() * width);
+          const y = Math.floor(Math.random() * height);
+          
+          if (canPlaceModule(x, y, size.w, size.h)) {
+            markOccupied(x, y, size.w, size.h);
+            modules.push(this.createModule(x, y, type, size.w, size.h));
+            placed = true;
+          }
+          attempts++;
+        }
       }
     }
     
-    // Fill remaining slots with random modules
-    const remainingCount = moduleCount - modules.length;
+    // Fill some remaining space with random modules
     const randomTypes: ModuleType[] = ['heavy', 'structural', 'valuable', 'data'];
+    const remainingAttempts = 10;
     
-    for (let i = 0; i < remainingCount; i++) {
-      let x, y;
-      do {
-        x = Math.floor(Math.random() * width);
-        y = Math.floor(Math.random() * height);
-      } while (positions.has(`${x},${y}`));
-      
-      positions.add(`${x},${y}`);
+    for (let i = 0; i < remainingAttempts; i++) {
       const type = randomTypes[Math.floor(Math.random() * randomTypes.length)];
-      modules.push(this.createModule(x, y, type));
+      const sizes = moduleSizes[type];
+      const size = sizes[Math.floor(Math.random() * sizes.length)];
+      
+      const x = Math.floor(Math.random() * width);
+      const y = Math.floor(Math.random() * height);
+      
+      if (canPlaceModule(x, y, size.w, size.h)) {
+        markOccupied(x, y, size.w, size.h);
+        modules.push(this.createModule(x, y, type, size.w, size.h));
+      }
     }
     
-    // Fill the rest with empty spaces
+    // Fill remaining single cells with empty spaces
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
-        if (!positions.has(`${x},${y}`)) {
-          modules.push(this.createModule(x, y, 'empty'));
+        if (!occupiedCells.has(`${x},${y}`)) {
+          modules.push(this.createModule(x, y, 'empty', 1, 1));
         }
       }
     }
@@ -126,7 +167,7 @@ export class LootingGrid {
     };
   }
 
-  private createModule(x: number, y: number, type: ModuleType): Module {
+  private createModule(x: number, y: number, type: ModuleType, width: number = 1, height: number = 1): Module {
     const configs = {
       volatile: {
         names: ['Fuel Tank', 'Ammo Cache', 'Reactor Core', 'Munitions Store'],
@@ -140,8 +181,8 @@ export class LootingGrid {
         extractTime: [4, 6],  // Takes time and care
       },
       heavy: {
-        names: ['Armor Plating', 'Engine Block', 'Shield Generator'],
-        value: [800, 1200],   // Decent value
+        names: ['Armor Plating', 'Engine Block', 'Shield Generator', 'Reactor Assembly'],
+        value: [800, 1200],   // Decent value, scales with size
         extractTime: [6, 8],  // Very slow
       },
       data: {
@@ -150,7 +191,7 @@ export class LootingGrid {
         extractTime: [3, 4],  // Medium speed
       },
       structural: {
-        names: ['Support Beam', 'Power Conduit', 'Life Support'],
+        names: ['Support Beam', 'Power Conduit', 'Life Support', 'Hull Section'],
         value: [400, 600],    // Low value but stable
         extractTime: [3, 4],  // Medium speed
       },
@@ -168,20 +209,27 @@ export class LootingGrid {
 
     const config = configs[type];
     const name = config.names[Math.floor(Math.random() * config.names.length)];
-    const value = config.value[0] + Math.random() * (config.value[1] - config.value[0]);
-    const extractTime = config.extractTime[0] + Math.random() * (config.extractTime[1] - config.extractTime[0]);
+    let value = config.value[0] + Math.random() * (config.value[1] - config.value[0]);
+    let extractTime = config.extractTime[0] + Math.random() * (config.extractTime[1] - config.extractTime[0]);
+    
+    // Scale value and time based on size
+    const sizeMultiplier = width * height;
+    value = value * (1 + (sizeMultiplier - 1) * 0.5); // Larger items are worth more
+    extractTime = extractTime * (1 + (sizeMultiplier - 1) * 0.3); // Larger items take longer
 
     return {
       id: `module_${x}_${y}_${Date.now()}`,
       type,
       state: type === 'empty' ? 'destroyed' : 'available',
-      name,
+      name: sizeMultiplier > 1 ? `Large ${name}` : name,
       value: Math.round(value),
       condition: 70 + Math.random() * 30,
       extractTime,
       extractProgress: 0,
       gridX: x,
       gridY: y,
+      width,
+      height,
       instability: 0,
       explosionRadius: type === 'volatile' ? 2 : undefined,
     };

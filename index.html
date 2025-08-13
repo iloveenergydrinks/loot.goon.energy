@@ -199,17 +199,53 @@
       gap: 2px;
       background: #000;
       padding: 0;
+      grid-auto-rows: 120px;
+      grid-auto-columns: 120px;
     }
 
     .grid-cell {
-      width: 120px;
-      height: 120px;
+      min-width: 120px;
+      min-height: 120px;
       background: #181818;
       border: 2px solid var(--border-default);
       position: relative;
       cursor: pointer;
       transition: all 0.2s;
       overflow: hidden;
+    }
+    
+    /* Multi-cell modules */
+    .grid-cell.size-2x1 {
+      grid-column: span 2;
+      background: linear-gradient(90deg, #181818 0%, #1a1a1a 50%, #181818 100%);
+    }
+    
+    .grid-cell.size-3x1 {
+      grid-column: span 3;
+      background: linear-gradient(90deg, #181818 0%, #1c1c1c 25%, #1c1c1c 75%, #181818 100%);
+    }
+    
+    .grid-cell.size-1x2 {
+      grid-row: span 2;
+      background: linear-gradient(180deg, #181818 0%, #1a1a1a 50%, #181818 100%);
+    }
+    
+    .grid-cell.size-2x2 {
+      grid-column: span 2;
+      grid-row: span 2;
+      background: radial-gradient(circle at center, #1c1c1c 0%, #181818 100%);
+    }
+    
+    /* Large module styling */
+    .grid-cell.size-2x1 .module-value,
+    .grid-cell.size-3x1 .module-value,
+    .grid-cell.size-1x2 .module-value,
+    .grid-cell.size-2x2 .module-value {
+      font-size: 22px;
+    }
+    
+    .grid-cell.size-3x1 .module-name {
+      font-size: 12px;
     }
     
     /* Cell color coding based on rarity/type */
@@ -356,10 +392,12 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      font-size: 24px;
+      font-size: 36px;
       font-weight: bold;
-      color: #606060;
-      text-shadow: 0 0 4px rgba(0,0,0,0.8);
+      color: #404040;
+      text-shadow: 0 0 8px rgba(0,0,0,0.9);
+      opacity: 0.5;
+      z-index: 1;
     }
 
     .module-condition {

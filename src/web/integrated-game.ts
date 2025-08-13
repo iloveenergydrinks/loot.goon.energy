@@ -540,32 +540,86 @@ class IntegratedGame {
     if (!site) return;
     
     // Set grid dimensions
-    this.lootGrid.style.gridTemplateColumns = `repeat(${site.width}, 1fr)`;
+    this.lootGrid.style.gridTemplateColumns = `repeat(${site.width}, 120px)`;
+    this.lootGrid.style.gridTemplateRows = `repeat(${site.height}, 120px)`;
     this.lootGrid.innerHTML = '';
     
-    // Sort modules by position
-    const sortedModules = [...site.modules].sort((a, b) => {
-      if (a.gridY !== b.gridY) return a.gridY - b.gridY;
-      return a.gridX - b.gridX;
-    });
+    // Create a grid map to track which cells are occupied
+    const gridMap: (Module | null)[][] = Array(site.height).fill(null).map(() => Array(site.width).fill(null));
     
-    for (const module of sortedModules) {
-      const cell = this.createCell(module);
-      this.lootGrid.appendChild(cell);
-      
-      // Add click handler directly to each cell
-      if (module.state === 'available') {
-        cell.addEventListener('click', () => {
-          this.lootingGame.startExtraction(module.id);
-        });
-      } else if (module.state === 'extracting') {
-        cell.addEventListener('click', () => {
-          this.lootingGame.cancelExtraction(module.id);
-        });
-        cell.addEventListener('contextmenu', (e) => {
-          e.preventDefault();
-          this.lootingGame.cancelExtraction(module.id);
-        });
+    // Place modules in the grid map
+    for (const module of site.modules) {
+      if (module.type !== 'empty') {
+        gridMap[module.gridY][module.gridX] = module;
+      }
+    }
+    
+    // Render modules in grid order, skipping cells occupied by multi-cell modules
+    const renderedModules = new Set<string>();
+    
+    for (let y = 0; y < site.height; y++) {
+      for (let x = 0; x < site.width; x++) {
+        const module = gridMap[y][x];
+        
+        if (module && !renderedModules.has(module.id)) {
+          const cell = this.createCell(module);
+          
+          // Set grid position
+          cell.style.gridColumn = `${x + 1} / span ${module.width}`;
+          cell.style.gridRow = `${y + 1} / span ${module.height}`;
+          
+          this.lootGrid.appendChild(cell);
+          renderedModules.add(module.id);
+          
+          // Add click handler directly to each cell
+          if (module.state === 'available') {
+            cell.addEventListener('click', () => {
+              this.lootingGame.startExtraction(module.id);
+            });
+          } else if (module.state === 'extracting') {
+            cell.addEventListener('click', () => {
+              this.lootingGame.cancelExtraction(module.id);
+            });
+            cell.addEventListener('contextmenu', (e) => {
+              e.preventDefault();
+              this.lootingGame.cancelExtraction(module.id);
+            });
+          }
+        } else if (!module) {
+          // Check if this cell is part of a larger module
+          let isCovered = false;
+          for (const mod of site.modules) {
+            if (mod.type !== 'empty' && 
+                x >= mod.gridX && x < mod.gridX + mod.width &&
+                y >= mod.gridY && y < mod.gridY + mod.height) {
+              isCovered = true;
+              break;
+            }
+          }
+          
+          // If not covered, render an empty cell
+          if (!isCovered) {
+            const emptyModule: Module = {
+              id: `empty_${x}_${y}`,
+              type: 'empty',
+              state: 'destroyed',
+              name: 'Empty',
+              value: 0,
+              condition: 0,
+              extractTime: 0,
+              extractProgress: 0,
+              gridX: x,
+              gridY: y,
+              width: 1,
+              height: 1,
+              instability: 0
+            };
+            const cell = this.createCell(emptyModule);
+            cell.style.gridColumn = `${x + 1}`;
+            cell.style.gridRow = `${y + 1}`;
+            this.lootGrid.appendChild(cell);
+          }
+        }
       }
     }
   }
@@ -574,6 +628,11 @@ class IntegratedGame {
     const cell = document.createElement('div');
     cell.className = `grid-cell ${module.state}`;
     cell.dataset.moduleId = module.id;
+    
+    // Add size class for multi-cell modules
+    if (module.width > 1 || module.height > 1) {
+      cell.classList.add(`size-${module.width}x${module.height}`);
+    }
     
     // Determine rarity/color class based on value and type
     if (module.state === 'available' && module.value > 0) {
@@ -618,6 +677,14 @@ class IntegratedGame {
     value.className = 'module-value';
     value.textContent = module.value.toLocaleString();
     cell.appendChild(value);
+    
+    // Quantity indicator for multi-cell modules
+    if (module.width > 1 || module.height > 1) {
+      const quantity = document.createElement('div');
+      quantity.className = 'module-quantity';
+      quantity.textContent = `x${module.width * module.height}`;
+      cell.appendChild(quantity);
+    }
     
     // Condition
     const condition = document.createElement('div');
