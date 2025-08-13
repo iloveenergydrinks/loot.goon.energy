@@ -618,12 +618,16 @@ class IntegratedGame {
       }
       
       // Update instability indicators for volatile modules
-      if (module.type === 'volatile' && module.instability > 0) {
+      // Only show for available or extracting states (not for completed/destroyed modules)
+      if (module.type === 'volatile' && 
+          module.instability > 0 && 
+          (module.state === 'available' || module.state === 'extracting')) {
+        
         // Update instability bar
         const instabilityFill = cell.querySelector('.instability-fill') as HTMLElement;
         if (instabilityFill) {
           instabilityFill.style.width = `${module.instability}%`;
-        } else if (module.state === 'available') {
+        } else {
           // Add instability bar if it doesn't exist
           const instabilityBar = document.createElement('div');
           instabilityBar.className = 'instability-bar';
@@ -636,18 +640,16 @@ class IntegratedGame {
         
         // Add instability percentage display
         let percentEl = cell.querySelector('.instability-percent') as HTMLElement;
-        if (!percentEl && module.state === 'available') {
+        if (!percentEl) {
           percentEl = document.createElement('div');
           percentEl.className = 'instability-percent';
           cell.appendChild(percentEl);
         }
-        if (percentEl) {
-          percentEl.textContent = `${Math.round(module.instability)}%`;
-          if (module.instability > 75) {
-            percentEl.classList.add('critical');
-          } else {
-            percentEl.classList.remove('critical');
-          }
+        percentEl.textContent = `${Math.round(module.instability)}%`;
+        if (module.instability > 75) {
+          percentEl.classList.add('critical');
+        } else {
+          percentEl.classList.remove('critical');
         }
         
         // Add visual warnings for high instability
@@ -663,6 +665,10 @@ class IntegratedGame {
               warningEl.textContent = 'CRITICAL!';
               cell.appendChild(warningEl);
             }
+          } else {
+            // Remove warning if instability dropped below 75
+            const warningEl = cell.querySelector('.instability-warning');
+            if (warningEl) warningEl.remove();
           }
         } else {
           cell.classList.remove('critical-instability');
@@ -670,12 +676,15 @@ class IntegratedGame {
           if (warningEl) warningEl.remove();
         }
       } else {
-        // Clean up instability indicators if not volatile or no instability
+        // Clean up ALL instability indicators when module is not volatile, 
+        // has no instability, or is in a completed/destroyed state
         cell.classList.remove('critical-instability');
         const warningEl = cell.querySelector('.instability-warning');
         if (warningEl) warningEl.remove();
         const percentEl = cell.querySelector('.instability-percent');
         if (percentEl) percentEl.remove();
+        const instabilityBar = cell.querySelector('.instability-bar');
+        if (instabilityBar) instabilityBar.remove();
       }
     }
   }
@@ -893,8 +902,8 @@ class IntegratedGame {
         // Make cell identifiable as volatile for hover effects
         cell.classList.add('volatile');
         
-        // Add initial instability indicators if module has instability
-        if (module.instability > 0) {
+        // Add initial instability indicators only for available modules
+        if (module.instability > 0 && module.state === 'available') {
           // Add instability percentage
           const percentEl = document.createElement('div');
           percentEl.className = 'instability-percent';
