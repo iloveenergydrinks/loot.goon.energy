@@ -840,12 +840,26 @@ class IntegratedGame {
         }
       }
       
-      // Add volatile warning
+      // Add volatile warning and explosion radius indicator
       if (module.type === 'volatile') {
         const warning = document.createElement('div');
         warning.className = 'volatile-warning';
         warning.textContent = '⚠';
         cell.appendChild(warning);
+        
+        // Add explosion preview text
+        const preview = document.createElement('div');
+        preview.className = 'explosion-preview';
+        preview.textContent = 'BLAST 2x2';
+        cell.appendChild(preview);
+        
+        // Make cell identifiable as volatile for hover effects
+        cell.classList.add('volatile');
+        
+        // Add mouse events to show explosion radius
+        cell.style.pointerEvents = 'auto';
+        cell.addEventListener('mouseenter', () => this.showExplosionRadius(module));
+        cell.addEventListener('mouseleave', () => this.hideExplosionRadius());
       }
     } else if (module.state === 'looted') {
       const status = document.createElement('div');
@@ -895,43 +909,138 @@ class IntegratedGame {
     return cell;
   }
   
+  private explosionRadiusIndicator: HTMLElement | null = null;
+  
+  private showExplosionRadius(module: Module) {
+    // Remove any existing indicator
+    this.hideExplosionRadius();
+    
+    // Calculate explosion radius (2x2 around the module)
+    const explosionRadius = 2; // cells in each direction
+    const cell = document.querySelector(`[data-module-id="${module.id}"]`) as HTMLElement;
+    if (!cell) return;
+    
+    // Get grid dimensions
+    const state = this.lootingGame.getState();
+    const site = state.currentSite;
+    if (!site) return;
+    
+    // Calculate affected area
+    const minX = Math.max(0, module.gridX - explosionRadius);
+    const maxX = Math.min(site.width - 1, module.gridX + module.width - 1 + explosionRadius);
+    const minY = Math.max(0, module.gridY - explosionRadius);
+    const maxY = Math.min(site.height - 1, module.gridY + module.height - 1 + explosionRadius);
+    
+    // Create radius indicator
+    const indicator = document.createElement('div');
+    indicator.className = 'explosion-radius';
+    
+    // Calculate position and size based on affected cells
+    const cellWidth = cell.offsetWidth;
+    const cellHeight = cell.offsetHeight;
+    const gridGap = 2; // Gap between cells in pixels
+    
+    const width = (maxX - minX + 1) * cellWidth + (maxX - minX) * gridGap;
+    const height = (maxY - minY + 1) * cellHeight + (maxY - minY) * gridGap;
+    
+    // Position relative to grid
+    indicator.style.width = `${width}px`;
+    indicator.style.height = `${height}px`;
+    indicator.style.gridColumn = `${minX + 1} / ${maxX + 2}`;
+    indicator.style.gridRow = `${minY + 1} / ${maxY + 2}`;
+    
+    this.lootGrid.appendChild(indicator);
+    this.explosionRadiusIndicator = indicator;
+  }
+  
+  private hideExplosionRadius() {
+    if (this.explosionRadiusIndicator) {
+      this.explosionRadiusIndicator.remove();
+      this.explosionRadiusIndicator = null;
+    }
+  }
+  
   private onExplosion(exploded: Module, affected: Module[]) {
+    console.log(`💥 Explosion at ${exploded.name}! Affected ${affected.length} modules`);
+    
     // Find the exploded cell
-    const explodedCell = document.querySelector(`[data-module-id="${exploded.id}"]`);
+    const explodedCell = document.querySelector(`[data-module-id="${exploded.id}"]`) as HTMLElement;
     if (!explodedCell) return;
     
-    // Create explosion effect
-    const explosion = document.createElement('div');
-    explosion.className = 'explosion-effect';
-    explosion.style.left = '50%';
-    explosion.style.top = '50%';
-    explosion.style.transform = 'translate(-50%, -50%)';
-    explodedCell.appendChild(explosion);
+    const rect = explodedCell.getBoundingClientRect();
+    const gridRect = this.lootGrid.getBoundingClientRect();
     
-    // Remove after animation
-    setTimeout(() => explosion.remove(), 500);
+    // Create blast wave effect at explosion source
+    const blastWave = document.createElement('div');
+    blastWave.className = 'blast-wave';
+    blastWave.style.left = `${rect.left - gridRect.left + rect.width / 2}px`;
+    blastWave.style.top = `${rect.top - gridRect.top + rect.height / 2}px`;
+    blastWave.style.position = 'absolute';
+    this.lootGrid.appendChild(blastWave);
     
-    // Show damage numbers on affected modules
-    for (const module of affected) {
-      const cell = document.querySelector(`[data-module-id="${module.id}"]`);
-      if (!cell) continue;
-      
-      const damage = document.createElement('div');
-      damage.className = 'damage-number';
-      damage.textContent = '-50';
-      damage.style.left = '50%';
-      damage.style.top = '50%';
-      damage.style.transform = 'translate(-50%, -50%)';
-      cell.appendChild(damage);
-      
-      // Remove after animation
-      setTimeout(() => damage.remove(), 1000);
+    // Remove blast wave after animation
+    setTimeout(() => blastWave.remove(), 600);
+    
+    // Add chain reaction indicator if it's a volatile
+    if (exploded.type === 'volatile') {
+      const chainIndicator = document.createElement('div');
+      chainIndicator.className = 'chain-reaction';
+      chainIndicator.textContent = 'CHAIN!';
+      explodedCell.appendChild(chainIndicator);
+      setTimeout(() => chainIndicator.remove(), 500);
     }
     
-    // Screen shake effect
-    document.body.style.animation = 'screen-shake 0.3s';
+    // Show impact on affected cells with delay for visual effect
     setTimeout(() => {
-      document.body.style.animation = '';
+      for (const module of affected) {
+        const cell = document.querySelector(`[data-module-id="${module.id}"]`) as HTMLElement;
+        if (!cell || cell === explodedCell) continue;
+        
+        // Add impact flash
+        const impact = document.createElement('div');
+        impact.className = 'explosion-impact';
+        cell.appendChild(impact);
+        
+        // Add damage source indicator pointing to explosion
+        const sourceRect = explodedCell.getBoundingClientRect();
+        const targetRect = cell.getBoundingClientRect();
+        const angle = Math.atan2(
+          targetRect.top - sourceRect.top,
+          targetRect.left - sourceRect.left
+        );
+        
+        const damageSource = document.createElement('div');
+        damageSource.className = 'damage-source';
+        damageSource.style.left = `${Math.cos(angle) * -20 + 50}%`;
+        damageSource.style.top = `${Math.sin(angle) * -20 + 50}%`;
+        cell.appendChild(damageSource);
+        
+        // Show damage numbers
+        const damage = document.createElement('div');
+        damage.className = 'damage-number';
+        damage.textContent = '-50';
+        damage.style.left = '50%';
+        damage.style.top = '20%';
+        damage.style.transform = 'translate(-50%, -50%)';
+        cell.appendChild(damage);
+        
+        // Add shaking
+        cell.classList.add('shaking');
+        
+        // Clean up after animations
+        setTimeout(() => {
+          impact.remove();
+          damage.remove();
+          damageSource.remove();
+          cell.classList.remove('shaking');
+        }, 800);
+      }
+    }, 100);
+    
+    // Screen shake effect (less intense)
+    this.lootGrid.style.animation = 'screen-shake 0.3s';
+    setTimeout(() => {
+      this.lootGrid.style.animation = '';
     }, 300);
   }
   
