@@ -469,6 +469,11 @@ class IntegratedGame {
       // Update class
       cell.className = `grid-cell ${module.state}`;
       
+      // Add size class if multi-cell
+      if (module.width > 1 || module.height > 1) {
+        cell.classList.add(`size-${module.width}x${module.height}`);
+      }
+      
       // Add rarity class
       if (module.state === 'available' && module.value > 0) {
         if (module.value >= 2000 || module.type === 'valuable') {
@@ -482,8 +487,19 @@ class IntegratedGame {
         cell.classList.add('corrupted');
       }
       
-      // Update progress bar for extracting modules
+      // Update status overlay
+      let statusEl = cell.querySelector('.module-status') as HTMLElement;
       if (module.state === 'extracting') {
+        if (!statusEl) {
+          statusEl = document.createElement('div');
+          statusEl.className = 'module-status extracting';
+          cell.appendChild(statusEl);
+        }
+        const timeLeft = Math.round(module.extractTime * (1 - module.extractProgress));
+        statusEl.textContent = `EXTRACTING...${timeLeft}s`;
+        statusEl.className = 'module-status extracting';
+        
+        // Update progress bar
         const progressFill = cell.querySelector('.progress-fill') as HTMLElement;
         if (progressFill) {
           progressFill.style.width = `${module.extractProgress * 100}%`;
@@ -497,6 +513,17 @@ class IntegratedGame {
           progressBar.appendChild(fill);
           cell.appendChild(progressBar);
         }
+      } else if (module.state === 'looted' && statusEl) {
+        statusEl.className = 'module-status complete';
+        statusEl.textContent = 'COMPLETE';
+      } else if (module.state === 'damaged' && statusEl) {
+        statusEl.className = 'module-status damaged';
+        statusEl.textContent = 'DAMAGED';
+      } else if (module.state === 'destroyed' && !statusEl) {
+        statusEl = document.createElement('div');
+        statusEl.className = 'module-status failed';
+        statusEl.textContent = 'FAILED';
+        cell.appendChild(statusEl);
       }
       
       // Apply failure animation if flagged
@@ -507,6 +534,35 @@ class IntegratedGame {
           module.failureAnimation = false;
           cell.classList.remove('extraction-failed');
         }, 500);
+      }
+      
+      // Update risk indicator for available modules
+      if (module.state === 'available') {
+        let riskEl = cell.querySelector('.module-risk') as HTMLElement;
+        const failureChance = this.calculateFailureChance(site.siteStability);
+        
+        if (failureChance > 0) {
+          if (!riskEl) {
+            riskEl = document.createElement('div');
+            riskEl.className = 'module-risk';
+            cell.appendChild(riskEl);
+          }
+          
+          // Update risk class and text
+          riskEl.className = 'module-risk';
+          if (failureChance <= 10) {
+            riskEl.classList.add('low');
+            riskEl.textContent = `${Math.round(failureChance)}%`;
+          } else if (failureChance <= 30) {
+            riskEl.classList.add('medium');
+            riskEl.textContent = `${Math.round(failureChance)}%`;
+          } else {
+            riskEl.classList.add('high');
+            riskEl.textContent = `${Math.round(failureChance)}%!`;
+          }
+        } else if (riskEl) {
+          riskEl.remove();
+        }
       }
       
       // Update instability bar for volatile modules
@@ -652,6 +708,13 @@ class IntegratedGame {
     }
     
     if (module.state === 'destroyed' || module.type === 'empty') {
+      // Add status for destroyed/empty
+      if (module.state === 'destroyed') {
+        const status = document.createElement('div');
+        status.className = 'module-status failed';
+        status.textContent = 'FAILED';
+        cell.appendChild(status);
+      }
       return cell;
     }
     
@@ -684,8 +747,74 @@ class IntegratedGame {
     condition.textContent = `${Math.round(module.condition)}%`;
     cell.appendChild(condition);
     
+    // Add status overlay based on state
+    if (module.state === 'available') {
+      const status = document.createElement('div');
+      status.className = 'module-status ready';
+      status.textContent = 'READY';
+      cell.appendChild(status);
+      
+      // Add extraction time indicator
+      const time = document.createElement('div');
+      time.className = 'module-time';
+      time.textContent = `${Math.round(module.extractTime)}s`;
+      cell.appendChild(time);
+      
+      // Add cargo weight indicator (simplified as 5 units per module)
+      const weight = document.createElement('div');
+      weight.className = 'module-weight';
+      weight.textContent = `5kg`;
+      cell.appendChild(weight);
+      
+      // Add risk indicator based on site stability
+      const state = this.lootingGame.getState();
+      const site = state.currentSite;
+      if (site) {
+        const failureChance = this.calculateFailureChance(site.siteStability);
+        if (failureChance > 0) {
+          const risk = document.createElement('div');
+          risk.className = 'module-risk';
+          if (failureChance <= 10) {
+            risk.classList.add('low');
+            risk.textContent = `${Math.round(failureChance)}%`;
+          } else if (failureChance <= 30) {
+            risk.classList.add('medium');
+            risk.textContent = `${Math.round(failureChance)}%`;
+          } else {
+            risk.classList.add('high');
+            risk.textContent = `${Math.round(failureChance)}%!`;
+          }
+          cell.appendChild(risk);
+        }
+      }
+      
+      // Add volatile warning
+      if (module.type === 'volatile') {
+        const warning = document.createElement('div');
+        warning.className = 'volatile-warning';
+        warning.textContent = '⚠';
+        cell.appendChild(warning);
+      }
+    } else if (module.state === 'looted') {
+      const status = document.createElement('div');
+      status.className = 'module-status complete';
+      status.textContent = 'COMPLETE';
+      cell.appendChild(status);
+    } else if (module.state === 'damaged') {
+      const status = document.createElement('div');
+      status.className = 'module-status damaged';
+      status.textContent = 'DAMAGED';
+      cell.appendChild(status);
+    }
+    
     // Progress bar for extraction
     if (module.state === 'extracting') {
+      const status = document.createElement('div');
+      status.className = 'module-status extracting';
+      const timeLeft = Math.round(module.extractTime * (1 - module.extractProgress));
+      status.textContent = `EXTRACTING...${timeLeft}s`;
+      cell.appendChild(status);
+      
       const progressBar = document.createElement('div');
       progressBar.className = 'progress-bar';
       const progressFill = document.createElement('div');
