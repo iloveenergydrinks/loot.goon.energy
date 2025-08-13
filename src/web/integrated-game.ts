@@ -934,22 +934,53 @@ class IntegratedGame {
     // Create radius indicator
     const indicator = document.createElement('div');
     indicator.className = 'explosion-radius';
+    indicator.style.position = 'absolute';
     
-    // Calculate position and size based on affected cells
-    const cellWidth = cell.offsetWidth;
-    const cellHeight = cell.offsetHeight;
-    const gridGap = 2; // Gap between cells in pixels
+    // Get the grid wrapper for positioning reference
+    const gridWrapper = this.lootGrid.closest('.grid-wrapper') as HTMLElement;
+    const containerRect = gridWrapper ? gridWrapper.getBoundingClientRect() : this.lootGrid.getBoundingClientRect();
     
+    // Use getBoundingClientRect for accurate positioning
+    const cellRect = cell.getBoundingClientRect();
+    
+    // Get a sample cell to determine cell dimensions
+    const sampleCell = this.lootGrid.querySelector('.grid-cell') as HTMLElement;
+    if (!sampleCell) return;
+    
+    const cellWidth = sampleCell.offsetWidth;
+    const cellHeight = sampleCell.offsetHeight;
+    const gridGap = 2; // Gap between cells
+    
+    // Calculate the size of the explosion area
     const width = (maxX - minX + 1) * cellWidth + (maxX - minX) * gridGap;
     const height = (maxY - minY + 1) * cellHeight + (maxY - minY) * gridGap;
     
-    // Position relative to grid
+    // Get grid position within wrapper
+    const gridRect = this.lootGrid.getBoundingClientRect();
+    const gridOffsetLeft = gridRect.left - containerRect.left;
+    const gridOffsetTop = gridRect.top - containerRect.top;
+    
+    // Calculate the top-left position of the explosion area
+    // Start from the current module's position and offset back to minX, minY
+    const currentCellLeft = cellRect.left - containerRect.left;
+    const currentCellTop = cellRect.top - containerRect.top;
+    
+    // Calculate offset from current module position to explosion area start
+    const offsetX = (module.gridX - minX) * (cellWidth + gridGap);
+    const offsetY = (module.gridY - minY) * (cellHeight + gridGap);
+    
     indicator.style.width = `${width}px`;
     indicator.style.height = `${height}px`;
-    indicator.style.gridColumn = `${minX + 1} / ${maxX + 2}`;
-    indicator.style.gridRow = `${minY + 1} / ${maxY + 2}`;
+    indicator.style.left = `${currentCellLeft - offsetX}px`;
+    indicator.style.top = `${currentCellTop - offsetY}px`;
     
-    this.lootGrid.appendChild(indicator);
+    // Add to the grid wrapper which is positioned relative
+    if (gridWrapper) {
+      gridWrapper.appendChild(indicator);
+    } else {
+      // Fallback to grid itself
+      this.lootGrid.appendChild(indicator);
+    }
     this.explosionRadiusIndicator = indicator;
   }
   
