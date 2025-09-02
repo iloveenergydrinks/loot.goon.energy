@@ -10,11 +10,8 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
-        engine: resolve(__dirname, 'engine.html'),
         grid: resolve(__dirname, 'grid.html'),
       },
     },
   },
 });
-
-

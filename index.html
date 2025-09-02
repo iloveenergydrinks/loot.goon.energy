@@ -1758,47 +1758,92 @@
       </div>
       
       <div class="gdd-item">
-        <div class="gdd-item-title">Affix Distribution</div>
+        <div class="gdd-item-title">Universal Affix Distribution</div>
         <div class="gdd-item-desc">
-          When a module gains an affix, probability of each type:
+          Any module can receive these universal affixes:
         </div>
         <div style="margin-top: 8px;">
-          <div><span class="affix-badge-doc tethered">TETH</span> <span class="gdd-stat-value">30%</span> - Most common, still connected</div>
-          <div><span class="affix-badge-doc unstable">UNST</span> <span class="gdd-stat-value">25%</span> - Common from combat damage</div>
-          <div><span class="affix-badge-doc reinforced">REIN</span> <span class="gdd-stat-value">15%</span> - Military-grade survived</div>
-          <div><span class="affix-badge-doc time_sensitive">TIME</span> <span class="gdd-stat-value">15%</span> - Leaking/degrading</div>
-          <div><span class="affix-badge-doc encrypted">ENCR</span> <span class="gdd-stat-value">10%</span> - Data cores intact</div>
-          <div><span class="affix-badge-doc booby_trapped">TRAP</span> <span class="gdd-stat-value">5%</span> - Rare, high risk/reward</div>
+          <div><span class="affix-badge-doc secured">SECR</span> <span class="gdd-stat-value">15%</span> - Extra locks, guaranteed extraction</div>
+          <div><span class="affix-badge-doc damaged">DMGD</span> <span class="gdd-stat-value">20%</span> - Battle damage reduced value</div>
+          <div><span class="affix-badge-doc pristine">PRST</span> <span class="gdd-stat-value">10%</span> - Miraculously undamaged</div>
         </div>
       </div>
       
       <div class="gdd-item">
         <div class="gdd-item-title">Module-Specific Affix Logic</div>
         <div class="gdd-item-desc">
-          Affixes are assigned based on what makes logical sense for each module type:
+          Each module type has unique affixes that make logical sense:
         </div>
         <div style="margin-top: 8px; font-size: 13px;">
-          <div><strong>Volatile (Fuel/Ammo):</strong> Unstable (40%), Time Sensitive (15%), Trapped (10%), Tethered (15%)</div>
-          <div><strong>Fragile (Electronics):</strong> Encrypted (50%), Time Sensitive (20%), Tethered (15%), Reinforced (10%)</div>
-          <div><strong>Heavy (Engines):</strong> Tethered (30%), Reinforced (25%), Unstable (15%), Time Sensitive (10%)</div>
-          <div><strong>Data (Computers):</strong> Encrypted (60%), Tethered (20%), Time Sensitive (15%), Reinforced (5%)</div>
-          <div><strong>Structural (Armor):</strong> Reinforced (40%), Tethered (30%) - Cannot be unstable or encrypted</div>
-          <div><strong>Valuable (Cargo):</strong> Can have any affix depending on contents</div>
+          <div><strong style="color: #ff6644;">Volatile (Fuel/Ammo):</strong></div>
+          <div style="margin-left: 15px;">
+            • Leaking (25%) - Damages neighbors<br>
+            • Pressurized (20%) - Bigger explosions<br>
+            • Unstable (30%) - Degrading compounds
+          </div>
+          
+          <div style="margin-top: 5px;"><strong style="color: #ffaa44;">Fragile (Electronics):</strong></div>
+          <div style="margin-left: 15px;">
+            • Cracked (20%) - May break on success<br>
+            • Sensitive (15%) - Shock-sensitive<br>
+            • Calibrated (10%) - Worth more if careful
+          </div>
+          
+          <div style="margin-top: 5px;"><strong style="color: #888888;">Heavy (Engines/Weapons):</strong></div>
+          <div style="margin-left: 15px;">
+            • Anchored (20%) - Explosion-proof<br>
+            • Military (15%) - More valuable<br>
+            • Corroded (10%) - Harder over time
+          </div>
+          
+          <div style="margin-top: 5px;"><strong style="color: #6699ff;">Data (Computers):</strong></div>
+          <div style="margin-left: 15px;">
+            • Encrypted (30%) - Identity hidden<br>
+            • Corrupted (20%) - May be worthless<br>
+            • Classified (10%) - Valuable but adds heat
+          </div>
+          
+          <div style="margin-top: 5px;"><strong style="color: #44ff44;">Structural (Armor/Hull):</strong></div>
+          <div style="margin-left: 15px;">
+            • Welded (15%) - Connected to neighbors<br>
+            • Load Bearing (10%) - Supports wreck<br>
+            • Recycled (20%) - Fast but cheap
+          </div>
+          
+          <div style="margin-top: 5px;"><strong style="color: #ff44ff;">Valuable (Cargo/Loot):</strong></div>
+          <div style="margin-left: 15px;">
+            • Booby Trapped (5%) - Post-extraction explosion<br>
+            • Contraband (10%) - Illegal but valuable<br>
+            • Insured (5%) - Minimum value guarantee
+          </div>
         </div>
       </div>
       
       <div class="gdd-item">
-        <div class="gdd-item-title">Multiple Affixes</div>
+        <div class="gdd-item-title">Multiple Affix System</div>
         <div class="gdd-item-desc">
-          High-quality modules can have multiple affixes:
+          Modules can have up to 2 affixes maximum:
         </div>
         <div>
-          <span class="gdd-stat">1 Affix: <span class="gdd-stat-value">70%</span></span>
-          <span class="gdd-stat">2 Affixes: <span class="gdd-stat-value">25%</span></span>
-          <span class="gdd-stat">3 Affixes: <span class="gdd-stat-value">5%</span></span>
+          <span class="gdd-stat">Universal Only: <span class="gdd-stat-value">~45%</span></span><br>
+          <span class="gdd-stat">Type-Specific Only: <span class="gdd-stat-value">~55%</span></span><br>
+          <span class="gdd-stat">Both (1+1): <span class="gdd-stat-value">Common</span></span>
         </div>
-        <div class="gdd-item-desc" style="margin-top: 4px;">
-          Some combinations are incompatible (e.g., Reinforced + Unstable)
+        <div class="gdd-item-desc" style="margin-top: 8px;">
+          Example: Fuel tank could be DAMAGED (universal) + LEAKING (volatile)
+        </div>
+      </div>
+      
+      <div class="gdd-item">
+        <div class="gdd-item-title">Module Quality Impact</div>
+        <div class="gdd-item-desc">
+          Higher tier modules have increased affix chances:
+        </div>
+        <div>
+          <span class="gdd-stat">Tech 1: <span class="gdd-stat-value">Standard rates</span></span><br>
+          <span class="gdd-stat">Tech 2: <span class="gdd-stat-value">+10% all affixes</span></span><br>
+          <span class="gdd-stat">Tech 3: <span class="gdd-stat-value">+20% all affixes</span></span><br>
+          <span class="gdd-stat">Officer: <span class="gdd-stat-value">+30%, guaranteed 1+</span></span>
         </div>
       </div>
       
