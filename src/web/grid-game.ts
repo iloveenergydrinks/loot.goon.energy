@@ -2,12 +2,20 @@
 
 export type ModuleType = 'volatile' | 'fragile' | 'heavy' | 'data' | 'structural' | 'valuable' | 'empty';
 export type ModuleAffix =
-  | 'booby_trapped'
-  | 'unstable'
-  | 'reinforced'
-  | 'encrypted'
-  | 'tethered'
-  | 'time_sensitive';
+  // Universal affixes (any module)
+  | 'secured' | 'damaged' | 'pristine'
+  // Volatile specific
+  | 'leaking' | 'pressurized' | 'unstable'
+  // Fragile specific  
+  | 'cracked' | 'sensitive' | 'calibrated'
+  // Heavy specific
+  | 'anchored' | 'military' | 'corroded'
+  // Data specific
+  | 'encrypted' | 'corrupted' | 'classified'
+  // Structural specific
+  | 'welded' | 'load_bearing' | 'recycled'
+  // Valuable specific
+  | 'booby_trapped' | 'contraband' | 'insured';
 export type ModuleState = 'available' | 'extracting' | 'looted' | 'damaged' | 'destroyed' | 'unstable';
 
 export interface Module {
@@ -37,7 +45,7 @@ export interface GridSite {
   height: number;
   modules: Module[];
   siteStability: number; // 0-100
-
+  createdAt?: number; // Timestamp when wreck was created
   activeExtractions: Set<string>;
 }
 
@@ -170,7 +178,7 @@ export class LootingGrid {
       height,
       modules,
       siteStability: 100,
-
+      createdAt: Date.now(),
       activeExtractions: new Set(),
     };
   }
@@ -178,33 +186,33 @@ export class LootingGrid {
   private createModule(x: number, y: number, type: ModuleType, width: number = 1, height: number = 1): Module {
     const configs = {
       volatile: {
-        names: ['Fuel Tank', 'Ammo Cache', 'Reactor Core', 'Munitions Store'],
+        names: ['Fuel Tank', 'Ammo Cache', 'Plasma Cells', 'Reactor Core', 'Munitions Bay'],
         value: [1500, 2500],  // High value but dangerous
         extractTime: [2, 3],  // Quick to grab
         explosionRadius: 2,   // Bigger explosion
       },
       fragile: {
-        names: ['Data Core', 'Crystal Matrix', 'Quantum Drive', 'AI Module'],
+        names: ['Nav Computer', 'Data Core', 'Comm Array', 'Sensor Suite', 'AI Module'],
         value: [2000, 3000],  // Very high value
         extractTime: [4, 6],  // Takes time and care
       },
       heavy: {
-        names: ['Armor Plating', 'Engine Block', 'Shield Generator', 'Reactor Assembly'],
+        names: ['Engine Block', 'Thruster Assembly', 'Power Converter', 'Coolant System', 'Warp Drive'],
         value: [800, 1200],   // Decent value, scales with size
         extractTime: [6, 8],  // Very slow
       },
       data: {
-        names: ['Nav Computer', 'Black Box', 'Encrypted Files', 'Research Data'],
+        names: ['Ship Database', 'Black Box', 'Encrypted Logs', 'Research Files', 'Star Charts'],
         value: [1500, 2000],  // Good value
         extractTime: [3, 4],  // Medium speed
       },
       structural: {
-        names: ['Support Beam', 'Power Conduit', 'Life Support', 'Hull Section'],
+        names: ['Hull Plating', 'Armor Segment', 'Support Frame', 'Bulkhead', 'Shield Generator'],
         value: [400, 600],    // Low value but stable
         extractTime: [3, 4],  // Medium speed
       },
       valuable: {
-        names: ['Rare Alloy', 'Gold Circuit', 'Quantum Chip', 'Exotic Matter'],
+        names: ['Cargo Container', 'Trade Goods', 'Rare Materials', 'Medical Supplies', 'Weapon Cache'],
         value: [1000, 1500],  // Good consistent value
         extractTime: [3, 4],  // Medium speed
       },
@@ -226,15 +234,34 @@ export class LootingGrid {
     extractTime = extractTime * (1 + (sizeMultiplier - 1) * 0.3); // Larger items take longer
 
     const affixes = this.rollAffixesForType(type);
-    if (affixes.includes('reinforced')) {
-      extractTime *= 1.25;
+    
+    // Apply affix modifiers to value and extraction time
+    for (const affix of affixes) {
+      switch (affix) {
+        // Universal affixes
+        case 'secured': extractTime *= 1.5; break; // +50% time, but guaranteed success
+        case 'damaged': value *= 0.7; break; // -30% value
+        case 'pristine': value *= 1.2; break; // +20% value
+        // Heavy affixes
+        case 'anchored': extractTime *= 2; break; // 2x time but explosion immune
+        case 'military': value *= 1.1; break; // +10% value
+        case 'corroded': extractTime *= 1.2; break; // Gets worse over time
+        // Data affixes  
+        case 'encrypted': extractTime *= 1.3; break; // +30% time to decrypt
+        case 'classified': value *= 1.5; break; // +50% value but heat
+        // Structural affixes
+        case 'recycled': extractTime *= 0.5; value *= 0.5; break; // Fast but low value
+        // Valuable affixes
+        case 'insured': value = Math.max(value, 1000); break; // Minimum value guarantee
+        case 'contraband': value *= 1.3; break; // +30% value but illegal
+        // Fragile affixes
+        case 'calibrated': value *= 1.3; break; // +30% value if careful
+      }
     }
-    if (affixes.includes('encrypted')) {
-      value *= 1.2;
-    }
+    
     let explosionRadius: number | undefined = type === 'volatile' ? 2 : undefined;
-    if (type === 'volatile' && affixes.includes('unstable')) {
-      explosionRadius = 3;
+    if (type === 'volatile' && affixes.includes('pressurized')) {
+      explosionRadius = 3; // Larger blast for pressurized
     }
 
     return {
@@ -257,38 +284,73 @@ export class LootingGrid {
   }
 
   private rollAffixesForType(type: ModuleType): ModuleAffix[] {
-    const out: ModuleAffix[] = [];
+    const affixes: ModuleAffix[] = [];
     const chance = (p: number) => Math.random() < p;
+    
+    // Universal affixes - can appear on any module type
+    const rollUniversal = () => {
+      if (chance(0.15)) return 'secured';
+      if (chance(0.2)) return 'damaged';
+      if (chance(0.1)) return 'pristine';
+      return null;
+    };
+    
+    // First, try to add a universal affix
+    const universal = rollUniversal();
+    if (universal) affixes.push(universal);
+    
+    // Then add type-specific affixes
     switch (type) {
       case 'volatile':
-        if (chance(0.5)) out.push('unstable');
-        if (chance(0.25)) out.push('booby_trapped');
-        if (chance(0.2)) out.push('tethered');
+        // Explosive/fuel modules
+        if (chance(0.25)) affixes.push('leaking');
+        else if (chance(0.2)) affixes.push('pressurized');
+        else if (chance(0.3)) affixes.push('unstable');
         break;
+        
       case 'fragile':
-        if (chance(0.3)) out.push('time_sensitive');
-        if (chance(0.2)) out.push('reinforced');
+        // Delicate electronics
+        if (chance(0.2)) affixes.push('cracked');
+        else if (chance(0.15)) affixes.push('sensitive');
+        else if (chance(0.1)) affixes.push('calibrated');
         break;
+        
       case 'heavy':
-        if (chance(0.35)) out.push('tethered');
-        if (chance(0.15)) out.push('reinforced');
+        // Large machinery
+        if (chance(0.2)) affixes.push('anchored');
+        else if (chance(0.15)) affixes.push('military');
+        else if (chance(0.1)) affixes.push('corroded');
         break;
+        
       case 'data':
-        if (chance(0.6)) out.push('encrypted');
-        if (chance(0.15)) out.push('time_sensitive');
+        // Information systems
+        if (chance(0.3)) affixes.push('encrypted');
+        else if (chance(0.2)) affixes.push('corrupted');
+        else if (chance(0.1)) affixes.push('classified');
         break;
-      case 'valuable':
-        if (chance(0.25)) out.push('booby_trapped');
-        if (chance(0.2)) out.push('time_sensitive');
-        break;
+        
       case 'structural':
-        if (chance(0.2)) out.push('reinforced');
+        // Basic ship components
+        if (chance(0.15)) affixes.push('welded');
+        else if (chance(0.1)) affixes.push('load_bearing');
+        else if (chance(0.2)) affixes.push('recycled');
         break;
+        
+      case 'valuable':
+        // Cargo and trade goods
+        if (chance(0.15)) affixes.push('booby_trapped');
+        else if (chance(0.1)) affixes.push('contraband');
+        else if (chance(0.1)) affixes.push('insured');
+        break;
+        
       case 'empty':
       default:
+        // No affixes for destroyed cells
         break;
     }
-    return out;
+    
+    // Limit to max 2 affixes total
+    return affixes.slice(0, 2);
   }
 
   loadSite(site: GridSite) {
@@ -315,10 +377,32 @@ export class LootingGrid {
     module.state = 'extracting';
     site.activeExtractions.add(moduleId);
     
-    // Extraction time with affix modifiers
+    // Extraction time is already modified in createModule, but apply runtime modifiers
     let actualExtractTime = module.extractTime;
-    if (module.affixes.includes('reinforced')) actualExtractTime *= 1.1;
-    if (module.affixes.includes('tethered')) actualExtractTime *= 1.15;
+    
+    // Corroded modules get worse over time
+    if (module.affixes.includes('corroded')) {
+      const siteAge = site.createdAt ? (Date.now() - site.createdAt) / 60000 : 0;
+      if (siteAge > 10) actualExtractTime *= 1.5; // Even slower if old
+    }
+    
+    // Heavy modules take longer at low integrity (damaged machinery harder to remove)
+    if (module.type === 'heavy' && site.siteStability < 50) {
+      const integrityPenalty = site.siteStability < 25 ? 2.0 : 1.5;
+      actualExtractTime *= integrityPenalty;
+    }
+    
+    // Welded structural modules need adjacent cells clear
+    if (module.affixes.includes('welded')) {
+      // Check if adjacent modules exist
+      const hasAdjacent = site.modules.some(m => 
+        m.state === 'available' &&
+        Math.abs(m.gridX - module.gridX) <= 1 &&
+        Math.abs(m.gridY - module.gridY) <= 1 &&
+        m.id !== module.id
+      );
+      if (hasAdjacent) actualExtractTime *= 2; // Much harder with neighbors
+    }
     
     // Start extraction timer
     const startTime = Date.now();
@@ -394,10 +478,20 @@ export class LootingGrid {
     module.extractProgress = 0;
     site.activeExtractions.delete(module.id);
 
-    // Add to cargo (apply encrypted bonus)
+    // Add to cargo - handle encrypted modules specially
     let payout = Math.round(module.value * (module.condition / 100));
     if (module.affixes.includes('encrypted')) {
-      payout = Math.round(payout * 1.25);
+      // Encrypted modules: roll for actual value (0.5x to 2x base)
+      const multiplier = 0.5 + Math.random() * 1.5; // 0.5 to 2.0
+      payout = Math.round(payout * multiplier);
+      
+      // Chance for bonus intel/data drop
+      if (Math.random() < 0.3) {
+        // 30% chance for bonus data worth extra value
+        const bonusValue = Math.round(module.value * 0.5);
+        payout += bonusValue;
+        console.log(`Decryption successful! Found valuable intel worth ${bonusValue} credits`);
+      }
     }
     this.state.totalValue += payout;
     this.state.cargoUsed += cargoNeeded;
@@ -601,22 +695,82 @@ export class LootingGrid {
   }
 
   private calculateFailureChance(siteStability: number): number {
-    // At 70%+ stability: 0% failure chance
-    // At 40% stability: 20% failure chance
-    // At 10% stability: 50% failure chance
-    // At 0% stability: 70% failure chance
-    if (siteStability >= 70) return 0;
-    if (siteStability >= 40) return 20 * (1 - (siteStability - 40) / 30);
-    if (siteStability >= 10) return 20 + 30 * (1 - (siteStability - 10) / 30);
-    return 50 + 20 * (1 - siteStability / 10);
+    // Base failure chance based on integrity thresholds
+    if (siteStability >= 75) return 5; // Minimal risk
+    if (siteStability >= 50) return 5 + 10 * (1 - (siteStability - 50) / 25); // 5-15%
+    if (siteStability >= 25) return 15 + 15 * (1 - (siteStability - 25) / 25); // 15-30%
+    return 30 + 20 * (1 - siteStability / 25); // 30-50%
   }
   
   private calculateFailureChanceWithModule(module: Module, siteStability: number): number {
     let base = this.calculateFailureChance(siteStability);
-    if (module.affixes.includes('reinforced')) base -= 10;
-    if (module.affixes.includes('encrypted')) base += 10;
-    if (module.affixes.includes('booby_trapped')) base += 5;
-    return Math.max(0, Math.min(90, base));
+    
+    // Module type risk modifiers based on integrity
+    let typeModifier = 0;
+    if (siteStability < 75 && siteStability >= 50) {
+      // 75-50%: Early degradation affects sensitive modules
+      switch(module.type) {
+        case 'data': typeModifier = 10; break; // Data corrupts easily
+        case 'fragile': typeModifier = 5; break;
+        case 'volatile': typeModifier = 3; break;
+      }
+    } else if (siteStability < 50 && siteStability >= 25) {
+      // 50-25%: Significant risk for most modules
+      switch(module.type) {
+        case 'data': typeModifier = 25; break; // High corruption risk
+        case 'fragile': typeModifier = 20; break;
+        case 'volatile': typeModifier = 15; break;
+        case 'heavy': typeModifier = 5; break;
+        case 'structural': typeModifier = 0; break; // Most resilient
+        case 'valuable': typeModifier = 10; break;
+      }
+    } else if (siteStability < 25) {
+      // Below 25%: Everything is high risk
+      switch(module.type) {
+        case 'data': typeModifier = 40; break; // Almost certainly corrupted
+        case 'fragile': typeModifier = 35; break;
+        case 'volatile': typeModifier = 30; break;
+        case 'heavy': typeModifier = 15; break;
+        case 'structural': typeModifier = 10; break;
+        case 'valuable': typeModifier = 25; break;
+      }
+    }
+    
+    // Apply affix modifiers to failure chance
+    for (const affix of module.affixes) {
+      switch (affix) {
+        // Universal
+        case 'secured': return 0; // Guaranteed success
+        case 'damaged': base += 10; break;
+        case 'pristine': base -= 5; break;
+        // Volatile
+        case 'leaking': base += 5; break;
+        case 'pressurized': base += 15; break; // Very risky
+        case 'unstable': base += 10; break;
+        // Fragile
+        case 'cracked': base += 20; break; // Very likely to break
+        case 'sensitive': base += 10; break;
+        case 'calibrated': base -= 10; break; // Easier if careful
+        // Heavy
+        case 'anchored': base -= 15; break; // Very stable
+        case 'military': base -= 10; break;
+        case 'corroded': base += 5; break;
+        // Data
+        case 'encrypted': base += 10; break;
+        case 'corrupted': base += 15; break;
+        case 'classified': base += 5; break;
+        // Structural
+        case 'welded': base += 10; break; // Harder to extract
+        case 'load_bearing': base += 5; break;
+        case 'recycled': base -= 5; break; // Easy to remove
+        // Valuable
+        case 'booby_trapped': base += 5; break;
+        case 'contraband': base += 5; break;
+        case 'insured': base -= 5; break;
+      }
+    }
+    
+    return Math.max(0, Math.min(80, base + typeModifier)); // Cap at 80%
   }
 
   private failExtraction(moduleId: string) {
@@ -669,9 +823,8 @@ export class LootingGrid {
     const active = site.activeExtractions.size;
     if (active > 0) {
       site.siteStability = Math.max(0, site.siteStability - 0.02 * active);
-    } else {
-      site.siteStability = Math.min(100, site.siteStability + 0.01);
     }
+    // No recovery when idle - structural damage is permanent
     if (site.siteStability <= 30) {
       for (const mod of site.modules) {
         if (mod.type === 'volatile' && mod.state === 'available') {

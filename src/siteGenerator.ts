@@ -109,6 +109,8 @@ export function generateSite(type: SiteType, idStr = 'site'): Site {
     baselineNoisePerSec: type === 'Wreck' ? 2 : 1,
     stabilizedVolatiles: false,
     exhausted: nodes.length === 0,
+    createdAt: Date.now(),
+    integrity: 100,
   };
 }
 

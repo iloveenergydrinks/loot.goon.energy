@@ -197,7 +197,7 @@
       flex: 1;
       padding: 10px;
       position: relative;
-      overflow: auto;
+      overflow: hidden; /* Prevent scrollbars from explosion indicators */
       background: #0a0a0a;
     }
 
@@ -206,6 +206,7 @@
       height: 100%;
       min-height: 400px;
       position: relative;
+      overflow: hidden; /* Contain explosion indicators */
     }
 
     .loot-grid {
@@ -705,6 +706,9 @@
       pointer-events: none;
       z-index: 5;
       animation: pulse-radius 1s infinite;
+      /* Ensure it doesn't cause overflow */
+      max-width: calc(100% - 4px);
+      max-height: calc(100% - 4px);
     }
     
     @keyframes pulse-radius {
@@ -913,12 +917,53 @@
       color: var(--text-value);
     }
 
-    /* Integrity Bar */
-    .integrity-container {
+    /* Wreck Stats */
+    .wreck-stats-row {
       height: 60px;
       background: linear-gradient(180deg, #0a0a0a 0%, #000000 100%);
       border-top: 2px solid #222;
       padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 40px;
+    }
+    
+    .wreck-age-container {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+    
+    .wreck-age-label {
+      text-transform: uppercase;
+      font-size: 14px;
+      color: #888;
+      letter-spacing: 2px;
+    }
+    
+    .wreck-age-value {
+      font-size: 16px;
+      font-weight: bold;
+      color: #ff8800;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    
+    .wreck-age-value.fresh {
+      color: #44ff44;
+    }
+    
+    .wreck-age-value.aging {
+      color: #ffaa44;
+    }
+    
+    .wreck-age-value.old {
+      color: #ff6644;
+    }
+    
+    /* Integrity Bar */
+    .integrity-container {
       display: flex;
       align-items: center;
       gap: 20px;
@@ -1075,7 +1120,7 @@
       position: fixed;
       right: 0;
       top: 0;
-      width: 320px;
+      width: 380px;
       height: 100vh;
       background: linear-gradient(180deg, rgba(10,10,10,0.98), rgba(5,5,5,0.98));
       border-left: 1px solid #333;
@@ -1083,7 +1128,7 @@
       transform: translateX(100%);
       transition: transform 0.3s ease-out;
       z-index: 1000;
-      font-size: 12px;
+      font-size: 14px;
       color: #ccc;
     }
     
@@ -1114,14 +1159,14 @@
     }
     
     #gdd-toggle.panel-open {
-      right: 330px;
+      right: 390px;
     }
     
     .gdd-header {
       padding: 15px;
       background: rgba(0,0,0,0.5);
       border-bottom: 1px solid #333;
-      font-size: 14px;
+      font-size: 16px;
       font-weight: bold;
       color: #fff;
       display: flex;
@@ -1146,16 +1191,16 @@
     }
     
     .gdd-section h3 {
-      margin: 0 0 10px 0;
+      margin: 0 0 12px 0;
       color: #ff8800;
-      font-size: 13px;
+      font-size: 15px;
       text-transform: uppercase;
       letter-spacing: 1px;
     }
     
     .gdd-item {
-      margin-bottom: 12px;
-      padding: 10px;
+      margin-bottom: 14px;
+      padding: 12px;
       background: rgba(255,255,255,0.02);
       border: 1px solid #222;
       border-radius: 3px;
@@ -1164,21 +1209,21 @@
     .gdd-item-title {
       font-weight: bold;
       color: #fff;
-      margin-bottom: 4px;
-      font-size: 12px;
+      margin-bottom: 6px;
+      font-size: 14px;
     }
     
     .gdd-item-desc {
       color: #999;
-      line-height: 1.4;
-      font-size: 11px;
+      line-height: 1.5;
+      font-size: 13px;
     }
     
     .gdd-stat {
       display: inline-block;
-      margin-right: 10px;
+      margin-right: 12px;
       color: #666;
-      font-size: 10px;
+      font-size: 12px;
     }
     
     .gdd-stat-value {
@@ -1188,11 +1233,11 @@
     
     .module-type-badge {
       display: inline-block;
-      padding: 2px 6px;
-      margin-right: 5px;
+      padding: 3px 8px;
+      margin-right: 6px;
       border: 1px solid;
       border-radius: 2px;
-      font-size: 10px;
+      font-size: 11px;
       text-transform: uppercase;
     }
     
@@ -1205,11 +1250,11 @@
     
     .affix-badge-doc {
       display: inline-block;
-      padding: 2px 6px;
-      margin-right: 5px;
+      padding: 3px 8px;
+      margin-right: 6px;
       border: 1px solid;
       border-radius: 2px;
-      font-size: 10px;
+      font-size: 11px;
       text-transform: uppercase;
       font-weight: bold;
     }
@@ -1243,6 +1288,10 @@
         <div class="hud-row">
           <span class="hud-label">Sites</span>
           <span class="hud-value" id="hudSites">0</span>
+        </div>
+        <div class="hud-row">
+          <span class="hud-label">Oldest</span>
+          <span class="hud-value" id="hudOldest">0 MIN</span>
         </div>
       </div>
       <div class="prompt" id="prompt" style="display: none;">
@@ -1284,11 +1333,17 @@
           </div>
         </div>
         
-        <!-- Integrity Bar -->
-        <div class="integrity-container">
-          <div class="integrity-label">WRECK INTEGRITY</div>
-          <div class="integrity-bar" id="integrityBar"></div>
-          <div class="integrity-value" id="integrityValue">[100%]</div>
+        <!-- Wreck Stats -->
+        <div class="wreck-stats-row">
+          <div class="wreck-age-container">
+            <div class="wreck-age-label">WRECK AGE</div>
+            <div class="wreck-age-value" id="wreckAge">FRESH</div>
+          </div>
+          <div class="integrity-container">
+            <div class="integrity-label">WRECK INTEGRITY</div>
+            <div class="integrity-bar" id="integrityBar"></div>
+            <div class="integrity-value" id="integrityValue">[100%]</div>
+          </div>
         </div>
       </div>
     </div>
@@ -1388,17 +1443,71 @@
     </div>
     
     <div class="gdd-section">
-      <h3>Module Affixes</h3>
+      <h3>Module Affixes - Universal</h3>
+      <p style="color: #999; margin-bottom: 15px;">Can appear on any module type</p>
       
       <div class="gdd-item">
         <div class="gdd-item-title">
-          <span class="affix-badge-doc booby_trapped">TRAP</span> Booby Trapped
+          <span class="affix-badge-doc secured">SECR</span> Secured
         </div>
         <div class="gdd-item-desc">
-          Rigged to explode when extracted. Damages nearby modules but yields +50% value if you survive.
+          Extra clamps and locks. Takes longer but guaranteed extraction.
         </div>
         <div>
-          <span class="gdd-stat">Explosion: <span class="gdd-stat-value">2-tile radius</span></span>
+          <span class="gdd-stat">Effects: <span class="gdd-stat-value">+50% time, 0% failure chance (guaranteed success)</span></span>
+        </div>
+      </div>
+      
+      <div class="gdd-item">
+        <div class="gdd-item-title">
+          <span class="affix-badge-doc damaged">DMGD</span> Damaged
+        </div>
+        <div class="gdd-item-desc">
+          Module partially broken during ship destruction.
+        </div>
+        <div>
+          <span class="gdd-stat">Effects: <span class="gdd-stat-value">-30% value, +10% failure chance</span></span>
+        </div>
+      </div>
+      
+      <div class="gdd-item">
+        <div class="gdd-item-title">
+          <span class="affix-badge-doc pristine">PRST</span> Pristine
+        </div>
+        <div class="gdd-item-desc">
+          Survived destruction in perfect condition.
+        </div>
+        <div>
+          <span class="gdd-stat">Effects: <span class="gdd-stat-value">+20% value, -5% failure chance</span></span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="gdd-section">
+      <h3>Module Affixes - Type Specific</h3>
+      
+      <h4 style="color: #ff6644; margin-top: 20px;">Volatile Modules</h4>
+      <div class="gdd-item">
+        <div class="gdd-item-title">
+          <span class="affix-badge-doc leaking">LEAK</span> Leaking
+        </div>
+        <div class="gdd-item-desc">
+          Fuel/coolant leaking, damages nearby modules over time.
+        </div>
+        <div>
+          <span class="gdd-stat">Effects: <span class="gdd-stat-value">+5% failure, spreads damage to adjacent cells</span></span>
+        </div>
+      </div>
+      
+      <div class="gdd-item">
+        <div class="gdd-item-title">
+          <span class="affix-badge-doc pressurized">PRES</span> Pressurized
+        </div>
+        <div class="gdd-item-desc">
+          Under extreme pressure. Guaranteed explosion if extraction fails.
+        </div>
+        <div>
+          <span class="gdd-stat">Effects: <span class="gdd-stat-value">+15% failure, 3x3 blast if fails, guaranteed explosion</span></span>
         </div>
       </div>
       
@@ -1407,58 +1516,195 @@
           <span class="affix-badge-doc unstable">UNST</span> Unstable
         </div>
         <div class="gdd-item-desc">
-          Highly volatile. Increases site instability significantly and has higher failure chance.
+          Volatile compounds degrading rapidly.
         </div>
         <div>
-          <span class="gdd-stat">Instability: <span class="gdd-stat-value">+50%</span></span>
+          <span class="gdd-stat">Effects: <span class="gdd-stat-value">+10% failure, 2x instability buildup at low integrity</span></span>
+        </div>
+      </div>
+      
+      <h4 style="color: #ffaa44; margin-top: 20px;">Fragile Modules</h4>
+      <div class="gdd-item">
+        <div class="gdd-item-title">
+          <span class="affix-badge-doc cracked">CRCK</span> Cracked
+        </div>
+        <div class="gdd-item-desc">
+          Structural damage, may break even on successful extraction.
+        </div>
+        <div>
+          <span class="gdd-stat">Effects: <span class="gdd-stat-value">+20% failure, 50% chance to break on success</span></span>
         </div>
       </div>
       
       <div class="gdd-item">
         <div class="gdd-item-title">
-          <span class="affix-badge-doc reinforced">REIN</span> Reinforced
+          <span class="affix-badge-doc sensitive">SENS</span> Sensitive
         </div>
         <div class="gdd-item-desc">
-          Hardened casing takes 50% longer to extract but is immune to damage.
+          Shock-sensitive electronics. Fails if nearby explosions.
         </div>
         <div>
-          <span class="gdd-stat">Extract Time: <span class="gdd-stat-value">+50%</span></span>
+          <span class="gdd-stat">Effects: <span class="gdd-stat-value">+10% failure, auto-fails if adjacent explosion</span></span>
         </div>
       </div>
       
+      <div class="gdd-item">
+        <div class="gdd-item-title">
+          <span class="affix-badge-doc calibrated">CALB</span> Calibrated
+        </div>
+        <div class="gdd-item-desc">
+          Precision equipment. Worth more if extracted carefully.
+        </div>
+        <div>
+          <span class="gdd-stat">Effects: <span class="gdd-stat-value">+30% value, -10% failure (rewards careful extraction)</span></span>
+        </div>
+      </div>
+      
+      <h4 style="color: #888888; margin-top: 20px;">Heavy Modules</h4>
+      <div class="gdd-item">
+        <div class="gdd-item-title">
+          <span class="affix-badge-doc anchored">ANCH</span> Anchored
+        </div>
+        <div class="gdd-item-desc">
+          Heavily secured to hull. Slow but explosion-proof.
+        </div>
+        <div>
+          <span class="gdd-stat">Effects: <span class="gdd-stat-value">2x extraction time, -15% failure, immune to explosions</span></span>
+        </div>
+      </div>
+      
+      <div class="gdd-item">
+        <div class="gdd-item-title">
+          <span class="affix-badge-doc military">MILT</span> Military
+        </div>
+        <div class="gdd-item-desc">
+          Military-grade construction. More valuable and reliable.
+        </div>
+        <div>
+          <span class="gdd-stat">Effects: <span class="gdd-stat-value">+10% value, -10% failure chance</span></span>
+        </div>
+      </div>
+      
+      <div class="gdd-item">
+        <div class="gdd-item-title">
+          <span class="affix-badge-doc corroded">CORR</span> Corroded
+        </div>
+        <div class="gdd-item-desc">
+          Rust and corrosion. Gets harder to extract over time.
+        </div>
+        <div>
+          <span class="gdd-stat">Effects: <span class="gdd-stat-value">+5% failure, +50% time if wreck > 10min old</span></span>
+        </div>
+      </div>
+      
+      <h4 style="color: #6699ff; margin-top: 20px;">Data Modules</h4>
       <div class="gdd-item">
         <div class="gdd-item-title">
           <span class="affix-badge-doc encrypted">ENCR</span> Encrypted
         </div>
         <div class="gdd-item-desc">
-          Contains encoded data. Worth 30% more but takes slightly longer to process.
+          Identity and value hidden. Complete mystery until extracted.
         </div>
         <div>
-          <span class="gdd-stat">Value Bonus: <span class="gdd-stat-value">+30%</span></span>
+          <span class="gdd-stat">Effects: <span class="gdd-stat-value">+30% time, +10% failure, shows as "???"</span></span>
         </div>
       </div>
       
       <div class="gdd-item">
         <div class="gdd-item-title">
-          <span class="affix-badge-doc tethered">TETH</span> Tethered
+          <span class="affix-badge-doc corrupted">CORR</span> Corrupted
         </div>
         <div class="gdd-item-desc">
-          Connected to ship systems. Takes 30% longer to safely disconnect.
+          Data corruption detected. May be worthless.
         </div>
         <div>
-          <span class="gdd-stat">Extract Time: <span class="gdd-stat-value">+30%</span></span>
+          <span class="gdd-stat">Effects: <span class="gdd-stat-value">+15% failure, 50% chance to be worthless on extraction</span></span>
         </div>
       </div>
       
       <div class="gdd-item">
         <div class="gdd-item-title">
-          <span class="affix-badge-doc time_sensitive">TIME</span> Time Sensitive
+          <span class="affix-badge-doc classified">CLAS</span> Classified
         </div>
         <div class="gdd-item-desc">
-          Degrades rapidly. Loses 5% value every 10 seconds. Extract quickly!
+          Military/corporate intel. Very valuable but attracts attention.
         </div>
         <div>
-          <span class="gdd-stat">Decay Rate: <span class="gdd-stat-value">-5% per 10s</span></span>
+          <span class="gdd-stat">Effects: <span class="gdd-stat-value">+50% value, +5% failure, adds heat/wanted level</span></span>
+        </div>
+      </div>
+      
+      <h4 style="color: #44ff44; margin-top: 20px;">Structural Modules</h4>
+      <div class="gdd-item">
+        <div class="gdd-item-title">
+          <span class="affix-badge-doc welded">WELD</span> Welded
+        </div>
+        <div class="gdd-item-desc">
+          Welded to adjacent modules. Must clear neighbors first.
+        </div>
+        <div>
+          <span class="gdd-stat">Effects: <span class="gdd-stat-value">+10% failure, 2x time if neighbors exist</span></span>
+        </div>
+      </div>
+      
+      <div class="gdd-item">
+        <div class="gdd-item-title">
+          <span class="affix-badge-doc load_bearing">LOAD</span> Load Bearing
+        </div>
+        <div class="gdd-item-desc">
+          Supporting wreck structure. Removing weakens site.
+        </div>
+        <div>
+          <span class="gdd-stat">Effects: <span class="gdd-stat-value">+5% failure, -10% site stability when removed</span></span>
+        </div>
+      </div>
+      
+      <div class="gdd-item">
+        <div class="gdd-item-title">
+          <span class="affix-badge-doc recycled">RECY</span> Recycled
+        </div>
+        <div class="gdd-item-desc">
+          Low-grade recycled materials. Fast but cheap.
+        </div>
+        <div>
+          <span class="gdd-stat">Effects: <span class="gdd-stat-value">-50% value, 2x faster extraction, -5% failure</span></span>
+        </div>
+      </div>
+      
+      <h4 style="color: #ff44ff; margin-top: 20px;">Valuable Modules</h4>
+      <div class="gdd-item">
+        <div class="gdd-item-title">
+          <span class="affix-badge-doc booby_trapped">TRAP</span> Booby Trapped
+        </div>
+        <div class="gdd-item-desc">
+          Rigged to explode. Damages nearby modules AFTER extraction.
+        </div>
+        <div>
+          <span class="gdd-stat">Effects: <span class="gdd-stat-value">+5% failure, 30% chance of 1x1 explosion after success</span></span>
+        </div>
+      </div>
+      
+      <div class="gdd-item">
+        <div class="gdd-item-title">
+          <span class="affix-badge-doc contraband">CONT</span> Contraband
+        </div>
+        <div class="gdd-item-desc">
+          Illegal goods. Higher value but adds heat.
+        </div>
+        <div>
+          <span class="gdd-stat">Effects: <span class="gdd-stat-value">+30% value, +5% failure, increases wanted level</span></span>
+        </div>
+      </div>
+      
+      <div class="gdd-item">
+        <div class="gdd-item-title">
+          <span class="affix-badge-doc insured">INSR</span> Insured
+        </div>
+        <div class="gdd-item-desc">
+          Has insurance payout. Guaranteed minimum value.
+        </div>
+        <div>
+          <span class="gdd-stat">Effects: <span class="gdd-stat-value">Minimum 1000 value guaranteed, -5% failure</span></span>
         </div>
       </div>
     </div>
@@ -1491,6 +1737,145 @@
         <div class="gdd-item-title">Risk vs Reward</div>
         <div class="gdd-item-desc">
           Volatile and trapped modules are worth more but can cause chain reactions. Extract valuable items first, or clear dangerous ones to protect them?
+        </div>
+      </div>
+    </div>
+    
+    <div class="gdd-section">
+      <h3>Affix Generation Probabilities</h3>
+      
+      <div class="gdd-item">
+        <div class="gdd-item-title">Base Affix Chance</div>
+        <div class="gdd-item-desc">
+          When a ship is destroyed, each module has a chance to gain affixes based on destruction type:
+        </div>
+        <div>
+          <span class="gdd-stat">Normal Kill: <span class="gdd-stat-value">30%</span></span>
+          <span class="gdd-stat">Explosion: <span class="gdd-stat-value">50%</span></span><br>
+          <span class="gdd-stat">EMP/Disable: <span class="gdd-stat-value">20%</span></span>
+          <span class="gdd-stat">Self-Destruct: <span class="gdd-stat-value">70%</span></span>
+        </div>
+      </div>
+      
+      <div class="gdd-item">
+        <div class="gdd-item-title">Affix Distribution</div>
+        <div class="gdd-item-desc">
+          When a module gains an affix, probability of each type:
+        </div>
+        <div style="margin-top: 8px;">
+          <div><span class="affix-badge-doc tethered">TETH</span> <span class="gdd-stat-value">30%</span> - Most common, still connected</div>
+          <div><span class="affix-badge-doc unstable">UNST</span> <span class="gdd-stat-value">25%</span> - Common from combat damage</div>
+          <div><span class="affix-badge-doc reinforced">REIN</span> <span class="gdd-stat-value">15%</span> - Military-grade survived</div>
+          <div><span class="affix-badge-doc time_sensitive">TIME</span> <span class="gdd-stat-value">15%</span> - Leaking/degrading</div>
+          <div><span class="affix-badge-doc encrypted">ENCR</span> <span class="gdd-stat-value">10%</span> - Data cores intact</div>
+          <div><span class="affix-badge-doc booby_trapped">TRAP</span> <span class="gdd-stat-value">5%</span> - Rare, high risk/reward</div>
+        </div>
+      </div>
+      
+      <div class="gdd-item">
+        <div class="gdd-item-title">Module-Specific Affix Logic</div>
+        <div class="gdd-item-desc">
+          Affixes are assigned based on what makes logical sense for each module type:
+        </div>
+        <div style="margin-top: 8px; font-size: 13px;">
+          <div><strong>Volatile (Fuel/Ammo):</strong> Unstable (40%), Time Sensitive (15%), Trapped (10%), Tethered (15%)</div>
+          <div><strong>Fragile (Electronics):</strong> Encrypted (50%), Time Sensitive (20%), Tethered (15%), Reinforced (10%)</div>
+          <div><strong>Heavy (Engines):</strong> Tethered (30%), Reinforced (25%), Unstable (15%), Time Sensitive (10%)</div>
+          <div><strong>Data (Computers):</strong> Encrypted (60%), Tethered (20%), Time Sensitive (15%), Reinforced (5%)</div>
+          <div><strong>Structural (Armor):</strong> Reinforced (40%), Tethered (30%) - Cannot be unstable or encrypted</div>
+          <div><strong>Valuable (Cargo):</strong> Can have any affix depending on contents</div>
+        </div>
+      </div>
+      
+      <div class="gdd-item">
+        <div class="gdd-item-title">Multiple Affixes</div>
+        <div class="gdd-item-desc">
+          High-quality modules can have multiple affixes:
+        </div>
+        <div>
+          <span class="gdd-stat">1 Affix: <span class="gdd-stat-value">70%</span></span>
+          <span class="gdd-stat">2 Affixes: <span class="gdd-stat-value">25%</span></span>
+          <span class="gdd-stat">3 Affixes: <span class="gdd-stat-value">5%</span></span>
+        </div>
+        <div class="gdd-item-desc" style="margin-top: 4px;">
+          Some combinations are incompatible (e.g., Reinforced + Unstable)
+        </div>
+      </div>
+      
+      <div class="gdd-item">
+        <div class="gdd-item-title">Integrity & Risk System</div>
+        <div class="gdd-item-desc">
+          Wreck integrity degrades over time, increasing extraction risks. Module values never change (player-driven economy), but lower integrity means higher chance of losing modules entirely.
+        </div>
+        <div style="margin-top: 8px; font-size: 13px;">
+          <div style="margin-bottom: 8px;">
+            <strong>Integrity Degradation:</strong>
+            <div style="margin-left: 15px; color: #999;">
+              • All wrecks start at <span style="color: #44ff44;">100% integrity</span><br>
+              • Time-based decay: 0.25% (fresh) → 0.5% (aging) → 1% (old) per 5 sec<br>
+              • Natural decay stops at <span style="color: #ffaa44;">50% integrity</span><br>
+              • Active extractions: -0.02% per active module<br>
+              • <span style="color: #ff6644;">Damage is permanent</span> - no recovery
+            </div>
+          </div>
+          
+          <div style="margin-bottom: 8px;">
+            <strong>Risk Thresholds:</strong>
+            <div style="margin-left: 15px; color: #999;">
+              <strong style="color: #44ff44;">75-100% Integrity:</strong> Safe zone<br>
+              &nbsp;&nbsp;• Base 5% failure chance<br>
+              &nbsp;&nbsp;• All modules extract normally<br><br>
+              
+              <strong style="color: #ffaa44;">50-75% Integrity:</strong> Caution zone<br>
+              &nbsp;&nbsp;• Base 5-15% failure chance<br>
+              &nbsp;&nbsp;• Data: +10% corruption risk<br>
+              &nbsp;&nbsp;• Fragile: +5% break chance<br><br>
+              
+              <strong style="color: #ff8800;">25-50% Integrity:</strong> Danger zone<br>
+              &nbsp;&nbsp;• Base 15-30% failure chance<br>
+              &nbsp;&nbsp;• Data: +25% corruption (destroyed if fails)<br>
+              &nbsp;&nbsp;• Fragile: +20% break chance<br>
+              &nbsp;&nbsp;• Volatile: +15% instability<br>
+              &nbsp;&nbsp;• Heavy: 1.5x extraction time<br><br>
+              
+              <strong style="color: #ff4444;">0-25% Integrity:</strong> Critical zone<br>
+              &nbsp;&nbsp;• Base 30-50% failure chance<br>
+              &nbsp;&nbsp;• Data: +40% corruption (nearly guaranteed loss)<br>
+              &nbsp;&nbsp;• Fragile: +35% break chance<br>
+              &nbsp;&nbsp;• Volatile: +30% explosion risk<br>
+              &nbsp;&nbsp;• Heavy: 2x extraction time<br>
+              &nbsp;&nbsp;• Even structural modules at risk (+10%)
+            </div>
+          </div>
+          
+          <div style="margin-bottom: 8px;">
+            <strong>Module Risk Profiles:</strong>
+            <div style="margin-left: 15px; color: #999;">
+              • <span style="color: #6699ff;">Data:</span> Most vulnerable - corrupts easily at low integrity<br>
+              • <span style="color: #ffaa44;">Fragile:</span> High break risk when structural damage present<br>
+              • <span style="color: #ff6644;">Volatile:</span> Becomes unstable, can chain-explode<br>
+              • <span style="color: #888888;">Heavy:</span> Resilient but slow to extract when damaged<br>
+              • <span style="color: #44ff44;">Structural:</span> Most resilient to integrity loss<br>
+              • <span style="color: #ff44ff;">Valuable:</span> Moderate risk across all thresholds
+            </div>
+          </div>
+        </div>
+        <div class="gdd-item-desc" style="margin-top: 10px; font-style: italic;">
+          Strategic Note: Prioritize high-risk modules (data, fragile) at high integrity. Save structural modules for low-integrity salvage runs.
+        </div>
+      </div>
+      
+
+      <div class="gdd-item">
+        <div class="gdd-item-title">Module Quality Impact</div>
+        <div class="gdd-item-desc">
+          Higher tier modules have increased affix chances:
+        </div>
+        <div>
+          <span class="gdd-stat">Tech 1: <span class="gdd-stat-value">30%</span></span>
+          <span class="gdd-stat">Tech 2: <span class="gdd-stat-value">40%</span></span><br>
+          <span class="gdd-stat">Tech 3: <span class="gdd-stat-value">50%</span></span>
+          <span class="gdd-stat">Officer: <span class="gdd-stat-value">60%</span></span>
         </div>
       </div>
     </div>

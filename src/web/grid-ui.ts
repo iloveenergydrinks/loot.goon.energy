@@ -173,25 +173,44 @@ function createCell(module: Module): HTMLDivElement {
   
   // Type badge
   const typeBadge = document.createElement('div');
-  typeBadge.className = `module-type ${module.type}`;
-  typeBadge.textContent = module.type.substring(0, 3).toUpperCase();
-  typeBadge.setAttribute('data-tip', typeTooltip(module.type));
+  if (module.affixes.includes('encrypted') && module.state !== 'extracted') {
+    typeBadge.className = 'module-type encrypted';
+    typeBadge.textContent = '???';
+    typeBadge.style.background = '#ff44ff';
+    typeBadge.setAttribute('data-tip', 'Module type unknown - encrypted');
+  } else {
+    typeBadge.className = `module-type ${module.type}`;
+    typeBadge.textContent = module.type.substring(0, 3).toUpperCase();
+    typeBadge.setAttribute('data-tip', typeTooltip(module.type));
+  }
   cell.appendChild(typeBadge);
   
   // Name
   const name = document.createElement('div');
   name.className = 'module-name';
-  name.textContent = module.name;
+  // Encrypted modules hide their identity
+  if (module.affixes.includes('encrypted') && module.state !== 'extracted') {
+    name.textContent = 'ENCRYPTED';
+    name.style.color = '#ff44ff';
+  } else {
+    name.textContent = module.name;
+  }
   cell.appendChild(name);
   
   // Value
   const value = document.createElement('div');
   value.className = 'module-value';
-  value.textContent = `$${module.value}`;
+  // Encrypted modules hide value too - complete gamble
+  if (module.affixes.includes('encrypted') && module.state !== 'extracted') {
+    value.textContent = '???';
+    value.style.color = '#ff44ff'; // Purple for mystery
+  } else {
+    value.textContent = `$${module.value}`;
+  }
   cell.appendChild(value);
   
-  // Add value badge for high-value items
-  if (module.value >= 2000 && module.state === 'available') {
+  // Add value badge for high-value items (but not for encrypted - value unknown)
+  if (module.value >= 2000 && module.state === 'available' && !module.affixes.includes('encrypted')) {
     const valueBadge = document.createElement('div');
     valueBadge.className = 'value-badge';
     valueBadge.textContent = 'HIGH';
@@ -269,13 +288,35 @@ function typeTooltip(t: string): string {
 
 function affixTooltip(a: string): string {
   switch (a) {
-    case 'booby_trapped': return 'May trigger a small blast after successful extraction.';
-    case 'unstable': return 'Builds instability faster; larger blast radius.';
-    case 'reinforced': return 'Harder to remove; lower failure chance.';
-    case 'encrypted': return 'Higher value but higher failure chance; bonus payout.';
-    case 'tethered': return 'Anchored; extraction is slower.';
-    case 'time_sensitive': return 'Loses value over time; prioritize early.';
-    default: return 'No additional info.';
+    // Universal
+    case 'secured': return 'Extra clamps; 50% slower but guaranteed success.';
+    case 'damaged': return 'Partially broken; -30% value, +10% failure chance.';
+    case 'pristine': return 'Perfect condition; +20% value, -5% failure chance.';
+    // Volatile
+    case 'leaking': return 'Slowly damages nearby modules; extract quickly.';
+    case 'pressurized': return 'If fails, guaranteed explosion; +15% failure.';
+    case 'unstable': return 'Builds instability 2x faster at low integrity.';
+    // Fragile
+    case 'cracked': return '50% chance to break even if successful; +20% failure.';
+    case 'sensitive': return 'Fails if adjacent module explodes; +10% failure.';
+    case 'calibrated': return '+30% value if extracted carefully; -10% failure.';
+    // Heavy
+    case 'anchored': return '2x extraction time but explosion immune; -15% failure.';
+    case 'military': return 'Reinforced construction; +10% value, -10% failure.';
+    case 'corroded': return 'Gets harder over time; +5% failure, slower if old.';
+    // Data
+    case 'encrypted': return 'Identity and value hidden until extracted; +10% failure.';
+    case 'corrupted': return '50% chance to be worthless; +15% failure.';
+    case 'classified': return '+50% value but attracts heat; +5% failure.';
+    // Structural
+    case 'welded': return 'Must clear adjacent modules first; +10% failure.';
+    case 'load_bearing': return 'Reduces site stability by 10% when removed.';
+    case 'recycled': return 'Low quality; -50% value but 2x faster, -5% failure.';
+    // Valuable
+    case 'booby_trapped': return '30% chance to explode after extraction; +5% failure.';
+    case 'contraband': return 'Illegal goods; +30% value but adds heat.';
+    case 'insured': return 'Guaranteed minimum 1000 value; -5% failure.';
+    default: return 'Unknown affix effect.';
   }
 }
 

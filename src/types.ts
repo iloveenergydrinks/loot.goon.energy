@@ -36,6 +36,8 @@ export interface Site {
   baselineNoisePerSec: number;
   stabilizedVolatiles: boolean;
   exhausted: boolean;
+  createdAt?: number; // Timestamp when wreck was created
+  integrity?: number; // 0-100, structural integrity
 }
 
 export type Stance = 'Quick' | 'Normal' | 'Careful';

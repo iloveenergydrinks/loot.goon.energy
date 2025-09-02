@@ -27,6 +27,7 @@ class IntegratedGame {
   private hudCredits: HTMLElement;
   private hudCargo: HTMLElement;
   private hudSites: HTMLElement;
+  private hudOldest: HTMLElement;
   private prompt: HTMLElement;
   private lootModal: HTMLElement;
   private modalTitle: HTMLElement;
@@ -37,6 +38,7 @@ class IntegratedGame {
   private cargoStatus: HTMLElement;
   private integrityBar: HTMLElement;
   private integrityValue: HTMLElement;
+  private wreckAge: HTMLElement;
 
   
   // Game systems
@@ -45,6 +47,8 @@ class IntegratedGame {
   private totalCredits = 0;
   private cargoUsed = 0;
   private cargoMax = 100;
+  private wreckAgeTimer: number | null = null;
+  private mapUpdateTimer: number | null = null;
   
   // Module type labels
   private moduleTypeLabels: Record<string, string> = {
@@ -67,6 +71,7 @@ class IntegratedGame {
     this.hudCredits = document.getElementById('hudCredits')!;
     this.hudCargo = document.getElementById('hudCargo')!;
     this.hudSites = document.getElementById('hudSites')!;
+    this.hudOldest = document.getElementById('hudOldest')!;
     this.prompt = document.getElementById('prompt')!;
     this.lootModal = document.getElementById('lootModal')!;
     this.modalTitle = document.getElementById('modalTitle')!;
@@ -77,6 +82,7 @@ class IntegratedGame {
     this.cargoStatus = document.getElementById('cargoStatus')!;
     this.integrityBar = document.getElementById('integrityBar') as HTMLDivElement;
     this.integrityValue = document.getElementById('integrityValue')!;
+    this.wreckAge = document.getElementById('wreckAge')!;
 
     
     // Initialize integrity bar with segments
@@ -109,6 +115,39 @@ class IntegratedGame {
     
     // Start game loop
     this.gameLoop();
+    
+    // Start map update timer - updates every 5 seconds to show aging
+    this.mapUpdateTimer = window.setInterval(() => {
+      // Update HUD to show current oldest site
+      this.updateHUD();
+      
+      // Force re-render to update age displays
+      this.render();
+      
+      // Degrade integrity over time for all unvisited wrecks
+      for (const site of this.sites) {
+        if (site.gridSite && !site.visited) {
+          const ageMinutes = site.gridSite.createdAt ? (Date.now() - site.gridSite.createdAt) / 60000 : 0;
+          
+          // All wrecks degrade over time, but at different rates
+          // Fresh wrecks (< 10 min): slow degradation (0.25% per 5 sec)
+          // Aging wrecks (10-30 min): moderate degradation (0.5% per 5 sec)  
+          // Old wrecks (> 30 min): fast degradation (1% per 5 sec)
+          // But never below 50% from natural decay
+          
+          let degradationRate = 0.25;
+          if (ageMinutes >= 30) {
+            degradationRate = 1.0;
+          } else if (ageMinutes >= 10) {
+            degradationRate = 0.5;
+          }
+          
+          if (site.gridSite.siteStability > 50) {
+            site.gridSite.siteStability = Math.max(50, site.gridSite.siteStability - degradationRate);
+          }
+        }
+      }
+    }, 5000);
   }
   
   private initializeIntegrityBar() {
@@ -135,7 +174,7 @@ class IntegratedGame {
       const angle = (i / siteCount) * Math.PI * 2;
       const radius = 200 + Math.random() * 150;
       
-      this.sites.push({
+      const site: MapSite = {
         id: `site_${i}`,
         position: {
           x: this.canvas.width / 2 + Math.cos(angle) * radius,
@@ -143,7 +182,15 @@ class IntegratedGame {
         },
         type: siteTypes[Math.floor(Math.random() * siteTypes.length)],
         visited: false,
-      });
+      };
+      
+      // Generate grid site immediately so age tracking starts
+      const width = site.type === 'station' ? 7 : site.type === 'wreck' ? 6 : 5;
+      const height = site.type === 'station' ? 5 : 4;
+      site.gridSite = this.lootingGame.generateSite(width, height);
+      site.gridSite.name = this.getSiteName(site);
+      
+      this.sites.push(site);
     }
   }
   
@@ -169,15 +216,12 @@ class IntegratedGame {
   private enterSite(site: MapSite) {
     this.currentSite = site;
     
-    // Generate grid site if not already generated
+    // Load the site (already generated in generateSites)
     if (!site.gridSite) {
-      const width = site.type === 'station' ? 7 : site.type === 'wreck' ? 6 : 5;
-      const height = site.type === 'station' ? 5 : 4;
-      site.gridSite = this.lootingGame.generateSite(width, height);
-      site.gridSite.name = this.getSiteName(site);
+      console.error('Site should already have gridSite generated');
+      return;
     }
     
-    // Load the site
     this.lootingGame.loadSite(site.gridSite);
     
     // Show modal
@@ -192,6 +236,15 @@ class IntegratedGame {
     
     // Update UI stats
     this.updateLootUI();
+    
+    // Start timer to update wreck age every 10 seconds
+    if (this.wreckAgeTimer) clearInterval(this.wreckAgeTimer);
+    this.wreckAgeTimer = window.setInterval(() => {
+      const state = this.lootingGame.getState();
+      if (state.currentSite) {
+        this.updateWreckAge(state.currentSite);
+      }
+    }, 10000);
   }
   
   private exitSite() {
@@ -202,6 +255,12 @@ class IntegratedGame {
     
     // Clear extractions
     this.lootingGame.clearAllExtractions();
+    
+    // Clear wreck age timer
+    if (this.wreckAgeTimer) {
+      clearInterval(this.wreckAgeTimer);
+      this.wreckAgeTimer = null;
+    }
     
     // Hide modal
     this.lootModal.classList.remove('show');
@@ -291,6 +350,27 @@ class IntegratedGame {
     }
     
     this.hudSites.textContent = `${this.sites.filter(s => s.visited).length}/${this.sites.length}`;
+    
+    // Find oldest unvisited site
+    let oldestAge = 0;
+    for (const site of this.sites) {
+      if (!site.visited && site.gridSite?.createdAt) {
+        const ageMinutes = (Date.now() - site.gridSite.createdAt) / 60000;
+        if (ageMinutes > oldestAge) {
+          oldestAge = ageMinutes;
+        }
+      }
+    }
+    this.hudOldest.textContent = `${Math.floor(oldestAge)} MIN`;
+    
+    // Color code based on age
+    if (oldestAge >= 30) {
+      this.hudOldest.style.color = '#ff6644';
+    } else if (oldestAge >= 10) {
+      this.hudOldest.style.color = '#ffaa44';
+    } else {
+      this.hudOldest.style.color = '#44ff44';
+    }
   }
   
   private render() {
@@ -346,6 +426,65 @@ class IntegratedGame {
       this.ctx.textBaseline = 'middle';
       const icons = { wreck: '⚠', station: '◈', asteroid: '◆' };
       this.ctx.fillText(icons[site.type], site.position.x, site.position.y);
+      
+      // Draw wreck age and integrity info
+      if (site.gridSite && !site.visited) {
+        // Calculate age
+        const ageMinutes = site.gridSite.createdAt ? (Date.now() - site.gridSite.createdAt) / 60000 : 0;
+        let ageColor = '#44ff44'; // Fresh
+        let ageText = 'FRESH';
+        if (ageMinutes >= 30) {
+          ageColor = '#ff6644'; // Old
+          ageText = 'OLD';
+        } else if (ageMinutes >= 10) {
+          ageColor = '#ffaa44'; // Aging
+          ageText = 'AGING';
+        }
+        
+        // Draw age indicator
+        this.ctx.font = '10px monospace';
+        this.ctx.fillStyle = ageColor;
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'top';
+        this.ctx.fillText(ageText, site.position.x, site.position.y + 35);
+        
+        // Draw integrity percentage
+        const integrity = Math.round(site.gridSite.siteStability || 100);
+        let integrityColor = '#44ff44';
+        if (integrity <= 20) {
+          integrityColor = '#ff4444';
+        } else if (integrity <= 40) {
+          integrityColor = '#ffaa44';
+        }
+        this.ctx.fillStyle = integrityColor;
+        this.ctx.fillText(`${integrity}%`, site.position.x, site.position.y + 46);
+        
+        // Draw integrity bar
+        const barWidth = 40;
+        const barHeight = 3;
+        const barX = site.position.x - barWidth / 2;
+        const barY = site.position.y + 58;
+        
+        // Background
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        this.ctx.fillRect(barX, barY, barWidth, barHeight);
+        
+        // Integrity fill
+        const fillWidth = (integrity / 100) * barWidth;
+        if (integrity > 40) {
+          this.ctx.fillStyle = '#44ff44';
+        } else if (integrity > 20) {
+          this.ctx.fillStyle = '#ffaa44';
+        } else {
+          this.ctx.fillStyle = '#ff4444';
+        }
+        this.ctx.fillRect(barX, barY, fillWidth, barHeight);
+        
+        // Border
+        this.ctx.strokeStyle = '#666';
+        this.ctx.lineWidth = 1;
+        this.ctx.strokeRect(barX, barY, barWidth, barHeight);
+      }
       
       // Interaction radius
       if (isNear) {
@@ -419,6 +558,9 @@ class IntegratedGame {
       this.hudCargo.style.color = '#ff8800';
     }
     
+    // Update wreck age
+    this.updateWreckAge(site);
+    
     // Update segmented integrity bar
     const segments = this.integrityBar.querySelectorAll('.integrity-segment');
     const totalSegments = segments.length;
@@ -451,6 +593,26 @@ class IntegratedGame {
   }
 
 
+  
+  private updateWreckAge(site: GridSite) {
+    const ageMinutes = site.createdAt ? (Date.now() - site.createdAt) / 60000 : 0;
+    let ageText = '';
+    let ageClass = '';
+    
+    if (ageMinutes < 10) {
+      ageText = `FRESH [${Math.floor(ageMinutes)}MIN]`;
+      ageClass = 'fresh';
+    } else if (ageMinutes < 30) {
+      ageText = `AGING [${Math.floor(ageMinutes)}MIN]`;
+      ageClass = 'aging';
+    } else {
+      ageText = `OLD [${Math.floor(ageMinutes)}MIN]`;
+      ageClass = 'old';
+    }
+    
+    this.wreckAge.textContent = ageText;
+    this.wreckAge.className = 'wreck-age-value ' + ageClass;
+  }
   
   private calculateFailureChance(siteStability: number): number {
     // Same calculation as in grid-game.ts
@@ -831,20 +993,39 @@ class IntegratedGame {
     // Type text
     const typeText = document.createElement('div');
     typeText.className = 'module-type-text';
-    typeText.textContent = this.moduleTypeLabels[module.type] || 'UNK';
-    typeText.setAttribute('data-tip', this.typeTooltip(module.type));
+    // Hide type for encrypted modules
+    if (module.affixes.includes('encrypted') && module.state !== 'extracted') {
+      typeText.textContent = '???';
+      typeText.style.color = '#ff44ff';
+      typeText.setAttribute('data-tip', 'Module type unknown - encrypted');
+    } else {
+      typeText.textContent = this.moduleTypeLabels[module.type] || 'UNK';
+      typeText.setAttribute('data-tip', this.typeTooltip(module.type));
+    }
     cell.appendChild(typeText);
     
     // Name
     const name = document.createElement('div');
     name.className = 'module-name';
-    name.textContent = module.name.toUpperCase();
+    // Encrypted modules hide their identity until extracted
+    if (module.affixes.includes('encrypted') && module.state !== 'extracted') {
+      name.textContent = 'ENCRYPTED MODULE';
+      name.style.color = '#ff44ff'; // Purple for mystery
+    } else {
+      name.textContent = module.name.toUpperCase();
+    }
     cell.appendChild(name);
     
     // Value
     const value = document.createElement('div');
     value.className = 'module-value';
-    value.textContent = module.value.toLocaleString();
+    // Encrypted modules hide their value too - complete gamble
+    if (module.affixes.includes('encrypted') && module.state !== 'extracted') {
+      value.textContent = '???';
+      value.style.color = '#ff44ff'; // Purple for mystery
+    } else {
+      value.textContent = module.value.toLocaleString();
+    }
     cell.appendChild(value);
 
     // Affix badges
@@ -1026,13 +1207,35 @@ class IntegratedGame {
 
   private affixTooltip(a: string): string {
     switch (a) {
-      case 'booby_trapped': return 'May trigger a small blast after successful extraction.';
-      case 'unstable': return 'Builds instability faster; larger blast radius.';
-      case 'reinforced': return 'Harder to remove; lower failure chance.';
-      case 'encrypted': return 'Higher value but higher failure chance; bonus payout.';
-      case 'tethered': return 'Anchored; extraction is slower.';
-      case 'time_sensitive': return 'Loses value over time; prioritize early.';
-      default: return 'No additional info.';
+      // Universal
+      case 'secured': return 'Extra clamps; 50% slower but guaranteed success.';
+      case 'damaged': return 'Partially broken; -30% value, +10% failure chance.';
+      case 'pristine': return 'Perfect condition; +20% value, -5% failure chance.';
+      // Volatile
+      case 'leaking': return 'Slowly damages nearby modules; extract quickly.';
+      case 'pressurized': return 'If fails, guaranteed explosion; +15% failure.';
+      case 'unstable': return 'Builds instability 2x faster at low integrity.';
+      // Fragile
+      case 'cracked': return '50% chance to break even if successful; +20% failure.';
+      case 'sensitive': return 'Fails if adjacent module explodes; +10% failure.';
+      case 'calibrated': return '+30% value if extracted carefully; -10% failure.';
+      // Heavy
+      case 'anchored': return '2x extraction time but explosion immune; -15% failure.';
+      case 'military': return 'Reinforced construction; +10% value, -10% failure.';
+      case 'corroded': return 'Gets harder over time; +5% failure, slower if old.';
+      // Data
+      case 'encrypted': return 'Identity and value hidden until extracted; +10% failure.';
+      case 'corrupted': return '50% chance to be worthless; +15% failure.';
+      case 'classified': return '+50% value but attracts heat; +5% failure.';
+      // Structural
+      case 'welded': return 'Must clear adjacent modules first; +10% failure.';
+      case 'load_bearing': return 'Reduces site stability by 10% when removed.';
+      case 'recycled': return 'Low quality; -50% value but 2x faster, -5% failure.';
+      // Valuable
+      case 'booby_trapped': return '30% chance to explode after extraction; +5% failure.';
+      case 'contraband': return 'Illegal goods; +30% value but adds heat.';
+      case 'insured': return 'Guaranteed minimum 1000 value; -5% failure.';
+      default: return 'Unknown affix effect.';
     }
   }
   

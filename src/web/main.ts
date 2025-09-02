@@ -23,6 +23,11 @@ const queueList = document.getElementById('queueList')!;
 const hazardValue = document.getElementById('hazardValue')!;
 const hazardBar = document.getElementById('hazardBar') as HTMLDivElement;
 
+// Wreck stats elements (create if they don't exist)
+let wreckAgeDisplay: HTMLElement;
+let integrityDisplay: HTMLElement;
+let integrityBar: HTMLElement;
+
 const cargoStatus = document.getElementById('cargoStatus')!;
 const waitForSpace = document.getElementById('waitForSpace') as HTMLInputElement;
 const autoStabilize = document.getElementById('autoStabilize') as HTMLInputElement;
@@ -216,6 +221,12 @@ function onEngineEvent(e: any) {
   if (e.type === 'ItemTransferred' || e.type === 'ItemSkipped' || e.type === 'NodeDestroyed') {
     renderLootGrid();
     renderQueue();
+    
+    // Degrade site integrity on extraction
+    if (e.type === 'ItemTransferred' && currentSite) {
+      currentSite.integrity = Math.max(0, (currentSite.integrity ?? 100) - 5);
+      updateWreckStats(currentSite);
+    }
   }
   
   // Update cargo
@@ -421,6 +432,127 @@ function updateCargoDisplay() {
   cargoStatus.textContent = `${Math.round(cargo.usedMassKg)}/${cargo.maxMassKg} kg`;
 }
 
+// Initialize wreck stats display
+function initWreckStats() {
+  // Check if elements exist, if not create them
+  if (!document.getElementById('wreckAge')) {
+    // Create wreck stats container
+    const statsContainer = document.createElement('div');
+    statsContainer.className = 'wreck-stats-container';
+    statsContainer.innerHTML = `
+      <div class="wreck-stat-row">
+        <span class="stat-label">Wreck Age:</span>
+        <span id="wreckAge" class="stat-value">Fresh</span>
+      </div>
+      <div class="wreck-stat-row">
+        <span class="stat-label">Integrity:</span>
+        <div class="integrity-bar-container">
+          <div id="wreckIntegrityBar" class="integrity-bar-fill"></div>
+        </div>
+        <span id="wreckIntegrityValue" class="stat-value">100%</span>
+      </div>
+    `;
+    
+    // Insert after hazard display or in loot grid area
+    const lootGridContainer = lootGrid?.parentElement;
+    if (lootGridContainer) {
+      lootGridContainer.insertBefore(statsContainer, lootGrid);
+    }
+    
+    // Add styles
+    if (!document.getElementById('wreck-stats-style')) {
+      const style = document.createElement('style');
+      style.id = 'wreck-stats-style';
+      style.textContent = `
+        .wreck-stats-container {
+          margin: 10px 0;
+          padding: 10px;
+          background: rgba(0,0,0,0.5);
+          border: 1px solid #333;
+          border-radius: 3px;
+        }
+        .wreck-stat-row {
+          display: flex;
+          align-items: center;
+          margin: 5px 0;
+          font-size: 12px;
+        }
+        .wreck-stat-row .stat-label {
+          flex: 0 0 80px;
+          color: #888;
+        }
+        .wreck-stat-row .stat-value {
+          color: #fff;
+          font-weight: bold;
+        }
+        .integrity-bar-container {
+          flex: 1;
+          height: 10px;
+          background: rgba(0,0,0,0.8);
+          border: 1px solid #444;
+          margin: 0 10px;
+          position: relative;
+        }
+        .integrity-bar-fill {
+          height: 100%;
+          background: linear-gradient(90deg, #44ff44, #ffaa44);
+          transition: width 0.3s ease;
+        }
+        .wreck-age-fresh { color: #44ff44 !important; }
+        .wreck-age-aging { color: #ffaa44 !important; }
+        .wreck-age-old { color: #ff6644 !important; }
+      `;
+      document.head.appendChild(style);
+    }
+  }
+  
+  wreckAgeDisplay = document.getElementById('wreckAge')!;
+  integrityDisplay = document.getElementById('wreckIntegrityValue')!;
+  integrityBar = document.getElementById('wreckIntegrityBar') as HTMLElement;
+}
+
+// Update wreck stats display
+function updateWreckStats(site: Site) {
+  if (!wreckAgeDisplay || !integrityDisplay || !integrityBar) {
+    initWreckStats();
+  }
+  
+  // Calculate wreck age
+  const ageMinutes = site.createdAt ? (Date.now() - site.createdAt) / 60000 : 0;
+  let ageText = 'Fresh';
+  let ageClass = 'wreck-age-fresh';
+  
+  if (ageMinutes >= 30) {
+    ageText = `Old (${Math.floor(ageMinutes)}min)`;
+    ageClass = 'wreck-age-old';
+  } else if (ageMinutes >= 10) {
+    ageText = `Aging (${Math.floor(ageMinutes)}min)`;
+    ageClass = 'wreck-age-aging';
+  } else {
+    ageText = `Fresh (${Math.floor(ageMinutes)}min)`;
+  }
+  
+  wreckAgeDisplay.textContent = ageText;
+  wreckAgeDisplay.className = `stat-value ${ageClass}`;
+  
+  // Update integrity
+  const integrity = site.integrity ?? 100;
+  integrityDisplay.textContent = `${Math.round(integrity)}%`;
+  integrityBar.style.width = `${integrity}%`;
+  
+  // Color code integrity bar
+  if (integrity <= 30) {
+    integrityBar.style.background = 'linear-gradient(90deg, #ff4444, #ff6644)';
+  } else if (integrity <= 60) {
+    integrityBar.style.background = 'linear-gradient(90deg, #ffaa44, #ffcc44)';
+  } else {
+    integrityBar.style.background = 'linear-gradient(90deg, #44ff44, #66ff66)';
+  }
+}
+
+// Timer for updating wreck age
+let wreckAgeTimer: number | null = null;
+
 // Open loot modal
 function openLootModal() {
   if (!currentSite) return;
@@ -428,9 +560,26 @@ function openLootModal() {
   lootModal.classList.add('show');
   modalTitle.textContent = `Salvage Operation - ${currentSite.id}`;
   setupEngine();
+  initWreckStats();
+  updateWreckStats(currentSite);
   renderLootGrid();
   renderQueue();
   updateCargoDisplay();
+  
+  // Start timer to update wreck age every 10 seconds
+  if (wreckAgeTimer) clearInterval(wreckAgeTimer);
+  wreckAgeTimer = window.setInterval(() => {
+    if (currentSite) {
+      updateWreckStats(currentSite);
+      
+      // Apply age-based degradation
+      const ageMinutes = currentSite.createdAt ? (Date.now() - currentSite.createdAt) / 60000 : 0;
+      if (ageMinutes >= 10) {
+        // Slow integrity loss for old wrecks
+        currentSite.integrity = Math.max(0, (currentSite.integrity ?? 100) - 0.5);
+      }
+    }
+  }, 10000);
 }
 
 // Close loot modal
@@ -438,6 +587,10 @@ function closeLootModal() {
   lootModal.classList.remove('show');
   if (engine && engine.getState().running) {
     engine.abort(onEngineEvent);
+  }
+  if (wreckAgeTimer) {
+    clearInterval(wreckAgeTimer);
+    wreckAgeTimer = null;
   }
 }
 
