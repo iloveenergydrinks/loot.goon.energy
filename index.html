@@ -447,10 +447,10 @@
       position: absolute;
       top: 5px;
       right: 5px;
-      padding: 2px 4px;
+      padding: 3px 6px;
       background: rgba(0,0,0,0.8);
       border: 1px solid #333;
-      font-size: 9px;
+      font-size: 11px;
       text-transform: uppercase;
       letter-spacing: 1px;
       color: #666;
@@ -839,6 +839,11 @@
     .grid-cell * {
       pointer-events: none !important;
     }
+    /* Allow hover tooltips on select elements */
+    .grid-cell .module-type-text,
+    .grid-cell .affix-badge {
+      pointer-events: auto !important;
+    }
     
     .extraction-failed {
       animation: failureFlash 0.5s ease-out;
@@ -1008,6 +1013,213 @@
         opacity: 0;
       }
     }
+
+    /* Affix badges */
+    .affix-badges {
+      position: absolute;
+      top: 6px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 4px;
+      z-index: 12;
+      pointer-events: none;
+    }
+    .affix-badge {
+      padding: 3px 6px;
+      font-size: 11px;
+      font-weight: bold;
+      text-transform: uppercase;
+      border: 1px solid #333;
+      background: rgba(0,0,0,0.85);
+      color: #bbb;
+      border-radius: 2px;
+    }
+    .affix-booby_trapped { border-color: #ff4444; color: #ff8888; }
+    .affix-unstable { border-color: #ff9900; color: #ffcc66; }
+    .affix-reinforced { border-color: #66ccff; color: #aaddff; }
+    .affix-encrypted { border-color: #bb66ff; color: #ddb3ff; }
+    .affix-tethered { border-color: #aaaaaa; color: #dddddd; }
+    .affix-time_sensitive { border-color: #ffaa00; color: #ffdd77; }
+
+    /* Custom tooltip */
+    .ui-tooltip {
+      position: fixed;
+      z-index: 10000;
+      max-width: 280px;
+      padding: 8px 10px;
+      background: linear-gradient(135deg, rgba(15,15,15,0.98), rgba(10,10,10,0.98));
+      border: 1px solid #444;
+      border-radius: 3px;
+      color: #e0e0e0;
+      font-size: 12px;
+      line-height: 1.4;
+      pointer-events: none;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.7), 0 0 1px rgba(255,255,255,0.1);
+      backdrop-filter: blur(4px);
+      animation: tooltip-fade-in 0.15s ease-out;
+    }
+    
+    @keyframes tooltip-fade-in {
+      from {
+        opacity: 0;
+        transform: scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+    /* GDD Panel Styles */
+    #gdd-panel {
+      position: fixed;
+      right: 0;
+      top: 0;
+      width: 320px;
+      height: 100vh;
+      background: linear-gradient(180deg, rgba(10,10,10,0.98), rgba(5,5,5,0.98));
+      border-left: 1px solid #333;
+      overflow-y: auto;
+      transform: translateX(100%);
+      transition: transform 0.3s ease-out;
+      z-index: 1000;
+      font-size: 12px;
+      color: #ccc;
+    }
+    
+    #gdd-panel.open {
+      transform: translateX(0);
+    }
+    
+    #gdd-toggle {
+      position: fixed;
+      right: 10px;
+      top: 10px;
+      padding: 8px 12px;
+      background: rgba(20,20,20,0.9);
+      border: 1px solid #444;
+      color: #888;
+      cursor: pointer;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      z-index: 999;
+      transition: all 0.2s;
+    }
+    
+    #gdd-toggle:hover {
+      background: rgba(30,30,30,0.9);
+      color: #aaa;
+      border-color: #555;
+    }
+    
+    #gdd-toggle.panel-open {
+      right: 330px;
+    }
+    
+    .gdd-header {
+      padding: 15px;
+      background: rgba(0,0,0,0.5);
+      border-bottom: 1px solid #333;
+      font-size: 14px;
+      font-weight: bold;
+      color: #fff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .gdd-close {
+      cursor: pointer;
+      font-size: 18px;
+      color: #666;
+      transition: color 0.2s;
+    }
+    
+    .gdd-close:hover {
+      color: #fff;
+    }
+    
+    .gdd-section {
+      padding: 15px;
+      border-bottom: 1px solid #222;
+    }
+    
+    .gdd-section h3 {
+      margin: 0 0 10px 0;
+      color: #ff8800;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    
+    .gdd-item {
+      margin-bottom: 12px;
+      padding: 10px;
+      background: rgba(255,255,255,0.02);
+      border: 1px solid #222;
+      border-radius: 3px;
+    }
+    
+    .gdd-item-title {
+      font-weight: bold;
+      color: #fff;
+      margin-bottom: 4px;
+      font-size: 12px;
+    }
+    
+    .gdd-item-desc {
+      color: #999;
+      line-height: 1.4;
+      font-size: 11px;
+    }
+    
+    .gdd-stat {
+      display: inline-block;
+      margin-right: 10px;
+      color: #666;
+      font-size: 10px;
+    }
+    
+    .gdd-stat-value {
+      color: #ff8800;
+      font-weight: bold;
+    }
+    
+    .module-type-badge {
+      display: inline-block;
+      padding: 2px 6px;
+      margin-right: 5px;
+      border: 1px solid;
+      border-radius: 2px;
+      font-size: 10px;
+      text-transform: uppercase;
+    }
+    
+    .module-type-badge.volatile { border-color: #ff6644; color: #ff9977; }
+    .module-type-badge.fragile { border-color: #ffaa44; color: #ffcc77; }
+    .module-type-badge.heavy { border-color: #8888ff; color: #aaaaff; }
+    .module-type-badge.data { border-color: #44ffff; color: #77ffff; }
+    .module-type-badge.structural { border-color: #888888; color: #bbbbbb; }
+    .module-type-badge.valuable { border-color: #ffdd44; color: #ffee77; }
+    
+    .affix-badge-doc {
+      display: inline-block;
+      padding: 2px 6px;
+      margin-right: 5px;
+      border: 1px solid;
+      border-radius: 2px;
+      font-size: 10px;
+      text-transform: uppercase;
+      font-weight: bold;
+    }
+    
+    .affix-badge-doc.booby_trapped { border-color: #ff4444; color: #ff8888; }
+    .affix-badge-doc.unstable { border-color: #ff9900; color: #ffcc66; }
+    .affix-badge-doc.reinforced { border-color: #66ccff; color: #aaddff; }
+    .affix-badge-doc.encrypted { border-color: #bb66ff; color: #ddb3ff; }
+    .affix-badge-doc.tethered { border-color: #aaaaaa; color: #dddddd; }
+    .affix-badge-doc.time_sensitive { border-color: #ffaa00; color: #ffdd77; }
   </style>
 </head>
 <body>
@@ -1083,5 +1295,237 @@
   </div>
 
   <script type="module" src="/src/web/integrated-game.ts"></script>
+  <!-- GDD Panel Toggle -->
+  <button id="gdd-toggle">Game Guide</button>
+  
+  <!-- GDD Panel -->
+  <div id="gdd-panel">
+    <div class="gdd-header">
+      <span>LOOTING SYSTEM GUIDE</span>
+      <span class="gdd-close">×</span>
+    </div>
+    
+    <div class="gdd-section">
+      <h3>Module Types</h3>
+      
+      <div class="gdd-item">
+        <div class="gdd-item-title">
+          <span class="module-type-badge volatile">VOL</span> Volatile
+        </div>
+        <div class="gdd-item-desc">
+          Explosive components that can detonate if mishandled. High risk, high reward.
+        </div>
+        <div>
+          <span class="gdd-stat">Base Value: <span class="gdd-stat-value">1500-3000</span></span>
+          <span class="gdd-stat">Weight: <span class="gdd-stat-value">5-15kg</span></span>
+        </div>
+      </div>
+      
+      <div class="gdd-item">
+        <div class="gdd-item-title">
+          <span class="module-type-badge fragile">FRA</span> Fragile
+        </div>
+        <div class="gdd-item-desc">
+          Delicate equipment requiring careful extraction. Can break if site stability is low.
+        </div>
+        <div>
+          <span class="gdd-stat">Base Value: <span class="gdd-stat-value">800-2000</span></span>
+          <span class="gdd-stat">Weight: <span class="gdd-stat-value">3-8kg</span></span>
+        </div>
+      </div>
+      
+      <div class="gdd-item">
+        <div class="gdd-item-title">
+          <span class="module-type-badge heavy">HVY</span> Heavy
+        </div>
+        <div class="gdd-item-desc">
+          Bulky machinery that takes longer to extract but is very stable.
+        </div>
+        <div>
+          <span class="gdd-stat">Base Value: <span class="gdd-stat-value">500-1500</span></span>
+          <span class="gdd-stat">Weight: <span class="gdd-stat-value">15-30kg</span></span>
+        </div>
+      </div>
+      
+      <div class="gdd-item">
+        <div class="gdd-item-title">
+          <span class="module-type-badge data">DAT</span> Data
+        </div>
+        <div class="gdd-item-desc">
+          Information storage devices. Quick to extract, moderate value.
+        </div>
+        <div>
+          <span class="gdd-stat">Base Value: <span class="gdd-stat-value">1000-2500</span></span>
+          <span class="gdd-stat">Weight: <span class="gdd-stat-value">1-5kg</span></span>
+        </div>
+      </div>
+      
+      <div class="gdd-item">
+        <div class="gdd-item-title">
+          <span class="module-type-badge structural">STR</span> Structural
+        </div>
+        <div class="gdd-item-desc">
+          Basic ship components. Low value but reliable to extract.
+        </div>
+        <div>
+          <span class="gdd-stat">Base Value: <span class="gdd-stat-value">200-800</span></span>
+          <span class="gdd-stat">Weight: <span class="gdd-stat-value">8-20kg</span></span>
+        </div>
+      </div>
+      
+      <div class="gdd-item">
+        <div class="gdd-item-title">
+          <span class="module-type-badge valuable">VAL</span> Valuable
+        </div>
+        <div class="gdd-item-desc">
+          Rare and precious components. High value, moderate extraction difficulty.
+        </div>
+        <div>
+          <span class="gdd-stat">Base Value: <span class="gdd-stat-value">2000-5000</span></span>
+          <span class="gdd-stat">Weight: <span class="gdd-stat-value">2-10kg</span></span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="gdd-section">
+      <h3>Module Affixes</h3>
+      
+      <div class="gdd-item">
+        <div class="gdd-item-title">
+          <span class="affix-badge-doc booby_trapped">TRAP</span> Booby Trapped
+        </div>
+        <div class="gdd-item-desc">
+          Rigged to explode when extracted. Damages nearby modules but yields +50% value if you survive.
+        </div>
+        <div>
+          <span class="gdd-stat">Explosion: <span class="gdd-stat-value">2-tile radius</span></span>
+        </div>
+      </div>
+      
+      <div class="gdd-item">
+        <div class="gdd-item-title">
+          <span class="affix-badge-doc unstable">UNST</span> Unstable
+        </div>
+        <div class="gdd-item-desc">
+          Highly volatile. Increases site instability significantly and has higher failure chance.
+        </div>
+        <div>
+          <span class="gdd-stat">Instability: <span class="gdd-stat-value">+50%</span></span>
+        </div>
+      </div>
+      
+      <div class="gdd-item">
+        <div class="gdd-item-title">
+          <span class="affix-badge-doc reinforced">REIN</span> Reinforced
+        </div>
+        <div class="gdd-item-desc">
+          Hardened casing takes 50% longer to extract but is immune to damage.
+        </div>
+        <div>
+          <span class="gdd-stat">Extract Time: <span class="gdd-stat-value">+50%</span></span>
+        </div>
+      </div>
+      
+      <div class="gdd-item">
+        <div class="gdd-item-title">
+          <span class="affix-badge-doc encrypted">ENCR</span> Encrypted
+        </div>
+        <div class="gdd-item-desc">
+          Contains encoded data. Worth 30% more but takes slightly longer to process.
+        </div>
+        <div>
+          <span class="gdd-stat">Value Bonus: <span class="gdd-stat-value">+30%</span></span>
+        </div>
+      </div>
+      
+      <div class="gdd-item">
+        <div class="gdd-item-title">
+          <span class="affix-badge-doc tethered">TETH</span> Tethered
+        </div>
+        <div class="gdd-item-desc">
+          Connected to ship systems. Takes 30% longer to safely disconnect.
+        </div>
+        <div>
+          <span class="gdd-stat">Extract Time: <span class="gdd-stat-value">+30%</span></span>
+        </div>
+      </div>
+      
+      <div class="gdd-item">
+        <div class="gdd-item-title">
+          <span class="affix-badge-doc time_sensitive">TIME</span> Time Sensitive
+        </div>
+        <div class="gdd-item-desc">
+          Degrades rapidly. Loses 5% value every 10 seconds. Extract quickly!
+        </div>
+        <div>
+          <span class="gdd-stat">Decay Rate: <span class="gdd-stat-value">-5% per 10s</span></span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="gdd-section">
+      <h3>Game Mechanics</h3>
+      
+      <div class="gdd-item">
+        <div class="gdd-item-title">Site Stability</div>
+        <div class="gdd-item-desc">
+          The structural integrity of the wreck. Decreases with each extraction, especially volatile ones. Low stability increases failure chance and damage risk. Recovers slowly when idle.
+        </div>
+      </div>
+      
+      <div class="gdd-item">
+        <div class="gdd-item-title">Extraction Queue</div>
+        <div class="gdd-item-desc">
+          You can queue up to 3 modules for extraction. Modules extract one at a time. Failed extractions damage the module and reduce its value.
+        </div>
+      </div>
+      
+      <div class="gdd-item">
+        <div class="gdd-item-title">Cargo Management</div>
+        <div class="gdd-item-desc">
+          Limited cargo space (100kg). Heavy modules take more space. Plan your extractions carefully - you can't take everything!
+        </div>
+      </div>
+      
+      <div class="gdd-item">
+        <div class="gdd-item-title">Risk vs Reward</div>
+        <div class="gdd-item-desc">
+          Volatile and trapped modules are worth more but can cause chain reactions. Extract valuable items first, or clear dangerous ones to protect them?
+        </div>
+      </div>
+    </div>
+    
+    <div class="gdd-section">
+      <h3>Tips & Strategy</h3>
+      
+      <div class="gdd-item">
+        <div class="gdd-item-desc">
+          • Extract time-sensitive modules first before they decay<br>
+          • Clear trapped modules away from valuable targets<br>
+          • Let stability recover between risky extractions<br>
+          • Prioritize high value/weight ratio items when cargo is limited<br>
+          • Reinforced modules are safe to extract during low stability<br>
+          • Chain reactions from volatiles can clear large areas - use strategically
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    // GDD Panel Toggle Logic
+    const gddToggle = document.getElementById('gdd-toggle');
+    const gddPanel = document.getElementById('gdd-panel');
+    const gddClose = document.querySelector('.gdd-close');
+    
+    gddToggle.addEventListener('click', () => {
+      gddPanel.classList.add('open');
+      gddToggle.classList.add('panel-open');
+    });
+    
+    gddClose.addEventListener('click', () => {
+      gddPanel.classList.remove('open');
+      gddToggle.classList.remove('panel-open');
+    });
+  </script>
 </body>
 </html>

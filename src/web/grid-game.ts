@@ -1,6 +1,13 @@
 // Grid-based looting game with immediate extraction and chain reactions
 
 export type ModuleType = 'volatile' | 'fragile' | 'heavy' | 'data' | 'structural' | 'valuable' | 'empty';
+export type ModuleAffix =
+  | 'booby_trapped'
+  | 'unstable'
+  | 'reinforced'
+  | 'encrypted'
+  | 'tethered'
+  | 'time_sensitive';
 export type ModuleState = 'available' | 'extracting' | 'looted' | 'damaged' | 'destroyed' | 'unstable';
 
 export interface Module {
@@ -20,6 +27,7 @@ export interface Module {
   isShaking?: boolean;
   failureAnimation?: boolean; // Flag for failure animation
   explosionRadius?: number;
+  affixes: ModuleAffix[];
 }
 
 export interface GridSite {
@@ -217,6 +225,18 @@ export class LootingGrid {
     value = value * (1 + (sizeMultiplier - 1) * 0.5); // Larger items are worth more
     extractTime = extractTime * (1 + (sizeMultiplier - 1) * 0.3); // Larger items take longer
 
+    const affixes = this.rollAffixesForType(type);
+    if (affixes.includes('reinforced')) {
+      extractTime *= 1.25;
+    }
+    if (affixes.includes('encrypted')) {
+      value *= 1.2;
+    }
+    let explosionRadius: number | undefined = type === 'volatile' ? 2 : undefined;
+    if (type === 'volatile' && affixes.includes('unstable')) {
+      explosionRadius = 3;
+    }
+
     return {
       id: `module_${x}_${y}_${Date.now()}`,
       type,
@@ -231,8 +251,44 @@ export class LootingGrid {
       width,
       height,
       instability: 0,
-      explosionRadius: type === 'volatile' ? 2 : undefined,
+      explosionRadius,
+      affixes,
     };
+  }
+
+  private rollAffixesForType(type: ModuleType): ModuleAffix[] {
+    const out: ModuleAffix[] = [];
+    const chance = (p: number) => Math.random() < p;
+    switch (type) {
+      case 'volatile':
+        if (chance(0.5)) out.push('unstable');
+        if (chance(0.25)) out.push('booby_trapped');
+        if (chance(0.2)) out.push('tethered');
+        break;
+      case 'fragile':
+        if (chance(0.3)) out.push('time_sensitive');
+        if (chance(0.2)) out.push('reinforced');
+        break;
+      case 'heavy':
+        if (chance(0.35)) out.push('tethered');
+        if (chance(0.15)) out.push('reinforced');
+        break;
+      case 'data':
+        if (chance(0.6)) out.push('encrypted');
+        if (chance(0.15)) out.push('time_sensitive');
+        break;
+      case 'valuable':
+        if (chance(0.25)) out.push('booby_trapped');
+        if (chance(0.2)) out.push('time_sensitive');
+        break;
+      case 'structural':
+        if (chance(0.2)) out.push('reinforced');
+        break;
+      case 'empty':
+      default:
+        break;
+    }
+    return out;
   }
 
   loadSite(site: GridSite) {
@@ -259,8 +315,10 @@ export class LootingGrid {
     module.state = 'extracting';
     site.activeExtractions.add(moduleId);
     
-    // Fixed extraction time (no stance modifiers)
-    const actualExtractTime = module.extractTime;
+    // Extraction time with affix modifiers
+    let actualExtractTime = module.extractTime;
+    if (module.affixes.includes('reinforced')) actualExtractTime *= 1.1;
+    if (module.affixes.includes('tethered')) actualExtractTime *= 1.15;
     
     // Start extraction timer
     const startTime = Date.now();
@@ -270,7 +328,9 @@ export class LootingGrid {
       
       // Build instability for volatile modules
       if (module.type === 'volatile') {
-        module.instability += 3; // Fixed instability rate
+        const baseRate = 3;
+        const rate = module.affixes.includes('unstable') ? baseRate * 1.6 : baseRate;
+        module.instability += rate;
         if (module.instability > 80) {
           module.isShaking = true;
         }
@@ -287,8 +347,8 @@ export class LootingGrid {
         clearInterval(timer);
         this.extractionTimers.delete(moduleId);
         
-        // Roll for extraction failure based on site stability
-        const failureChance = this.calculateFailureChance(site.siteStability);
+        // Roll for extraction failure based on site stability and module affixes
+        const failureChance = this.calculateFailureChanceWithModule(module, site.siteStability);
         if (Math.random() * 100 < failureChance) {
           this.failExtraction(moduleId);
         } else {
@@ -334,8 +394,12 @@ export class LootingGrid {
     module.extractProgress = 0;
     site.activeExtractions.delete(module.id);
 
-    // Add to cargo
-    this.state.totalValue += Math.round(module.value * (module.condition / 100));
+    // Add to cargo (apply encrypted bonus)
+    let payout = Math.round(module.value * (module.condition / 100));
+    if (module.affixes.includes('encrypted')) {
+      payout = Math.round(payout * 1.25);
+    }
+    this.state.totalValue += payout;
     this.state.cargoUsed += cargoNeeded;
 
     // SITE DEGRADATION: Each extraction makes the site more unstable
@@ -365,6 +429,10 @@ export class LootingGrid {
 
     // Check structural integrity
     this.checkStructuralIntegrity();
+    // Booby trap trigger on successful extraction
+    if (module.affixes.includes('booby_trapped') && Math.random() < 0.3) {
+      this.triggerTrapExplosion(module);
+    }
     
     this.onUpdate();
   }
@@ -452,6 +520,30 @@ export class LootingGrid {
     
     this.onUpdate();
   }
+  
+  private triggerTrapExplosion(source: Module) {
+    const site = this.state.currentSite;
+    if (!site) return;
+    const affected: Module[] = [];
+    const radius = (source.explosionRadius || 1) - 1;
+    for (const other of site.modules) {
+      if (other.id === source.id || other.state === 'destroyed') continue;
+      const dx = Math.abs(other.gridX - source.gridX);
+      const dy = Math.abs(other.gridY - source.gridY);
+      if (dx <= radius && dy <= radius) {
+        affected.push(other);
+        const damage = 20;
+        other.condition = Math.max(0, other.condition - damage);
+        if (other.condition <= 0) {
+          other.state = 'destroyed';
+        } else if (other.state === 'available') {
+          other.state = 'damaged';
+        }
+      }
+    }
+    site.siteStability = Math.max(0, site.siteStability - 10);
+    this.onExplosion(source, affected);
+  }
 
   private checkStructuralIntegrity() {
     const site = this.state.currentSite;
@@ -518,6 +610,14 @@ export class LootingGrid {
     if (siteStability >= 10) return 20 + 30 * (1 - (siteStability - 10) / 30);
     return 50 + 20 * (1 - siteStability / 10);
   }
+  
+  private calculateFailureChanceWithModule(module: Module, siteStability: number): number {
+    let base = this.calculateFailureChance(siteStability);
+    if (module.affixes.includes('reinforced')) base -= 10;
+    if (module.affixes.includes('encrypted')) base += 10;
+    if (module.affixes.includes('booby_trapped')) base += 5;
+    return Math.max(0, Math.min(90, base));
+  }
 
   private failExtraction(moduleId: string) {
     const site = this.state.currentSite;
@@ -566,9 +666,37 @@ export class LootingGrid {
   tick() {
     const site = this.state.currentSite;
     if (!site) return;
-
-
-
+    const active = site.activeExtractions.size;
+    if (active > 0) {
+      site.siteStability = Math.max(0, site.siteStability - 0.02 * active);
+    } else {
+      site.siteStability = Math.min(100, site.siteStability + 0.01);
+    }
+    if (site.siteStability <= 30) {
+      for (const mod of site.modules) {
+        if (mod.type === 'volatile' && mod.state === 'available') {
+          mod.instability = Math.min(100, mod.instability + (mod.affixes.includes('unstable') ? 2 : 1));
+          mod.isShaking = mod.instability > 80;
+          if (mod.instability >= 100) {
+            this.triggerExplosion(mod);
+            break;
+          }
+        }
+      }
+    }
+    if (site.siteStability <= 20 && Math.random() < 0.05) {
+      const candidates = site.modules.filter(m => m.state === 'available');
+      if (candidates.length) {
+        const victim = candidates[Math.floor(Math.random() * candidates.length)];
+        victim.state = 'damaged';
+        victim.condition = Math.max(0, victim.condition - 20);
+      }
+    }
+    for (const mod of site.modules) {
+      if (mod.state === 'available' && mod.affixes.includes('time_sensitive') && mod.value > 0) {
+        if (Math.random() < 0.1) mod.value = Math.max(0, mod.value - 1);
+      }
+    }
     this.onUpdate();
   }
 }

@@ -1,7 +1,8 @@
 import { generateSite } from '../siteGenerator.js';
 import { LootingEngine } from '../engine.js';
-import { AutoQueuePriorities, CargoState, LootNode, Site, ToolsState } from '../types.js';
+import { AutoQueuePriorities, CargoState, LootNode, LootTag, Site, ToolsState } from '../types.js';
 import { computeAutoQueue } from '../autoQueue.js';
+import { getTooltipManager } from './tooltip-manager.js';
 
 type Vec = { x: number; y: number };
 
@@ -244,7 +245,9 @@ function renderLootGrid() {
     // Tags
     const tags = node.tags.map(tag => {
       const isDanger = tag === 'Volatile' || tag === 'Ammo' || tag === 'Fuel';
-      return `<span class="tag ${isDanger ? 'danger' : ''}">${tag}</span>`;
+      // Use custom tooltip (data-tip), not browser title
+      const tip = escapeAttr(getTagTooltip(tag));
+      return `<span class="tag ${isDanger ? 'danger' : ''}" data-tip="${tip}">${tag}</span>`;
     }).join('');
     
     card.innerHTML = `
@@ -279,7 +282,93 @@ function renderLootGrid() {
     
     lootGrid.appendChild(card);
   }
+
+  // Ensure styles and initialize tooltip manager
+  ensureTagStyles();
+  getTooltipManager();
 }
+
+// Tooltips for loot tags
+const TAG_TOOLTIPS: Record<LootTag, string> = {
+  Ammo: 'Explosive munitions. Can detonate as hazard rises; high chain risk.',
+  Fuel: 'Flammable fuel. Increases instability; burns/ignites under stress.',
+  Volatile: 'Highly unstable. Explosion chance increases at hazard thresholds.',
+  Fragile: 'Easily damaged by vibrations/collapses; value drops if damaged.',
+  Heavy: 'High mass. Consumes cargo capacity quickly; slower to move.',
+  Rare: 'High-value find. Prioritize when safe; often guarded by risk.',
+  Ore: 'Bulk ore. Low value density; heavy and space-consuming.',
+  Oil: 'Liquid cargo. Bulky drums; spill/fire risk if compromised.',
+};
+
+function getTagTooltip(tag: LootTag): string {
+  return TAG_TOOLTIPS[tag] ?? 'No additional info.';
+}
+
+function escapeAttr(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+// Inject CSS for larger tags and our tooltip (once)
+let TAG_STYLE_ATTACHED = false;
+function ensureTagStyles() {
+  if (TAG_STYLE_ATTACHED) return;
+  const style = document.createElement('style');
+  style.textContent = `
+    .loot-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+    .loot-tags .tag {
+      display: inline-flex;
+      align-items: center;
+      height: 22px;
+      padding: 0 8px;
+      border: 1px solid #444;
+      border-radius: 4px;
+      background: rgba(0,0,0,0.7);
+      color: #cfcfcf;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      line-height: 1;
+      cursor: default;
+    }
+    .loot-tags .tag.danger { border-color: #ff4444; color: #ffaaaa; background: rgba(64,0,0,0.5); }
+    .ui-tooltip {
+      position: fixed;
+      z-index: 10000;
+      max-width: 280px;
+      padding: 8px 10px;
+      background: linear-gradient(135deg, rgba(15,15,15,0.98), rgba(10,10,10,0.98));
+      border: 1px solid #444;
+      border-radius: 3px;
+      color: #e0e0e0;
+      font-size: 12px;
+      line-height: 1.4;
+      pointer-events: none;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.7), 0 0 1px rgba(255,255,255,0.1);
+      backdrop-filter: blur(4px);
+      animation: tooltip-fade-in 0.15s ease-out;
+    }
+    
+    @keyframes tooltip-fade-in {
+      from {
+        opacity: 0;
+        transform: scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+  `;
+  document.head.appendChild(style);
+  TAG_STYLE_ATTACHED = true;
+}
+
+
 
 // Render queue
 function renderQueue() {

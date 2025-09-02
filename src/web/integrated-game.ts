@@ -1,4 +1,5 @@
 import { LootingGrid, Module, GridSite } from './grid-game.js';
+import { getTooltipManager } from './tooltip-manager.js';
 
 // Types
 interface Vec2 { x: number; y: number; }
@@ -442,9 +443,14 @@ class IntegratedGame {
     
 
     
+    // Ensure tooltip manager is active (it uses event delegation)
+    getTooltipManager();
+
     // Update existing module cells instead of re-rendering everything
     this.updateModuleCells();
   }
+
+
   
   private calculateFailureChance(siteStability: number): number {
     // Same calculation as in grid-game.ts
@@ -768,7 +774,8 @@ class IntegratedGame {
               gridY: y,
               width: 1,
               height: 1,
-              instability: 0
+              instability: 0,
+              affixes: []
             };
             const cell = this.createCell(emptyModule);
             cell.style.gridColumn = `${x + 1}`;
@@ -825,6 +832,7 @@ class IntegratedGame {
     const typeText = document.createElement('div');
     typeText.className = 'module-type-text';
     typeText.textContent = this.moduleTypeLabels[module.type] || 'UNK';
+    typeText.setAttribute('data-tip', this.typeTooltip(module.type));
     cell.appendChild(typeText);
     
     // Name
@@ -838,6 +846,20 @@ class IntegratedGame {
     value.className = 'module-value';
     value.textContent = module.value.toLocaleString();
     cell.appendChild(value);
+
+    // Affix badges
+    if (module.affixes && module.affixes.length) {
+      const affixWrap = document.createElement('div');
+      affixWrap.className = 'affix-badges';
+      for (const a of module.affixes) {
+        const b = document.createElement('span');
+        b.className = `affix-badge affix-${a}`;
+        b.textContent = this.affixLabel(a);
+        b.setAttribute('data-tip', this.affixTooltip(a));
+        affixWrap.appendChild(b);
+      }
+      cell.appendChild(affixWrap);
+    }
     
     // Condition
     const condition = document.createElement('div');
@@ -976,6 +998,42 @@ class IntegratedGame {
     }
     
     return cell;
+  }
+
+  private affixLabel(a: string): string {
+    switch (a) {
+      case 'booby_trapped': return 'TRAP';
+      case 'unstable': return 'UNST';
+      case 'reinforced': return 'RNF';
+      case 'encrypted': return 'ENC';
+      case 'tethered': return 'TETH';
+      case 'time_sensitive': return 'DECAY';
+      default: return a.toUpperCase();
+    }
+  }
+
+  private typeTooltip(t: string): string {
+    switch (t) {
+      case 'volatile': return 'Highly unstable cargo. Can explode; chain reaction risk.';
+      case 'fragile': return 'Delicate item. Easily damaged by instability/collapses.';
+      case 'heavy': return 'Large and bulky. Slower to extract; fills cargo fast.';
+      case 'data': return 'Digital/encoded assets. Valuable; may be encrypted.';
+      case 'structural': return 'Supports integrity. Removing too many reduces stability.';
+      case 'valuable': return 'High-value component or material.';
+      default: return 'Unknown type.';
+    }
+  }
+
+  private affixTooltip(a: string): string {
+    switch (a) {
+      case 'booby_trapped': return 'May trigger a small blast after successful extraction.';
+      case 'unstable': return 'Builds instability faster; larger blast radius.';
+      case 'reinforced': return 'Harder to remove; lower failure chance.';
+      case 'encrypted': return 'Higher value but higher failure chance; bonus payout.';
+      case 'tethered': return 'Anchored; extraction is slower.';
+      case 'time_sensitive': return 'Loses value over time; prioritize early.';
+      default: return 'No additional info.';
+    }
   }
   
   private explosionRadiusIndicator: HTMLElement | null = null;

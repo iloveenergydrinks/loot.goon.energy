@@ -1,4 +1,5 @@
 import { LootingGrid, Module, GridSite } from './grid-game.js';
+import { getTooltipManager } from './tooltip-manager.js';
 
 // Create the game instance
 const game = new LootingGrid(
@@ -54,6 +55,8 @@ function init() {
   // Initial render
   renderGrid();
   updateUI();
+  // Initialize tooltip manager (uses event delegation)
+  getTooltipManager();
 }
 
 // Get value tier for styling
@@ -172,6 +175,7 @@ function createCell(module: Module): HTMLDivElement {
   const typeBadge = document.createElement('div');
   typeBadge.className = `module-type ${module.type}`;
   typeBadge.textContent = module.type.substring(0, 3).toUpperCase();
+  typeBadge.setAttribute('data-tip', typeTooltip(module.type));
   cell.appendChild(typeBadge);
   
   // Name
@@ -199,6 +203,20 @@ function createCell(module: Module): HTMLDivElement {
   condition.className = 'module-condition';
   condition.textContent = `${Math.round(module.condition)}%`;
   cell.appendChild(condition);
+
+  // Affix badges
+  if (module.affixes && module.affixes.length && module.state !== 'destroyed') {
+    const affixWrap = document.createElement('div');
+    affixWrap.className = 'affix-badges';
+    for (const a of module.affixes) {
+      const b = document.createElement('span');
+      b.className = `affix-badge affix-${a}`;
+      b.textContent = affixLabel(a);
+      b.setAttribute('data-tip', affixTooltip(a));
+      affixWrap.appendChild(b);
+    }
+    cell.appendChild(affixWrap);
+  }
   
   // Progress bar for extraction
   if (module.state === 'extracting') {
@@ -224,6 +242,44 @@ function createCell(module: Module): HTMLDivElement {
   
   return cell;
 }
+
+function affixLabel(a: string): string {
+  switch (a) {
+    case 'booby_trapped': return 'TRAP';
+    case 'unstable': return 'UNST';
+    case 'reinforced': return 'RNF';
+    case 'encrypted': return 'ENC';
+    case 'tethered': return 'TETH';
+    case 'time_sensitive': return 'DECAY';
+    default: return a.toUpperCase();
+  }
+}
+
+function typeTooltip(t: string): string {
+  switch (t) {
+    case 'volatile': return 'Highly unstable cargo. Can explode; chain reaction risk.';
+    case 'fragile': return 'Delicate item. Easily damaged by instability/collapses.';
+    case 'heavy': return 'Large and bulky. Slower to extract; fills cargo fast.';
+    case 'data': return 'Digital/encoded assets. Valuable; may be encrypted.';
+    case 'structural': return 'Supports integrity. Removing too many reduces stability.';
+    case 'valuable': return 'High-value component or material.';
+    default: return 'Unknown type.';
+  }
+}
+
+function affixTooltip(a: string): string {
+  switch (a) {
+    case 'booby_trapped': return 'May trigger a small blast after successful extraction.';
+    case 'unstable': return 'Builds instability faster; larger blast radius.';
+    case 'reinforced': return 'Harder to remove; lower failure chance.';
+    case 'encrypted': return 'Higher value but higher failure chance; bonus payout.';
+    case 'tethered': return 'Anchored; extraction is slower.';
+    case 'time_sensitive': return 'Loses value over time; prioritize early.';
+    default: return 'No additional info.';
+  }
+}
+
+
 
 // Update UI elements
 function updateUI() {
